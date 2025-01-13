@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Star, ThumbsUp, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { Anime } from '../types';
-import { fetchFromAPI } from '../utils/api';
+import { fetchFromAPI, RequestPriority } from '../utils/api';
 import { LazyLoad } from '../components/LazyLoad';
 import { Modal } from '../components/Modal';
 
@@ -88,39 +88,46 @@ export function AnimePage() {
   );
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!id) return;
+    let isSubscribed = true;
 
+    const fetchAnimeData = async () => {
+      if (!id) return;
+      
       setIsLoading(true);
       setError(null);
-
       try {
-        // Fetch anime details first
-        const animeData = await fetchFromAPI<any>(`/anime/${id}/full`);
+        // Fetch main anime data with HIGH priority
+        const animeData = await fetchFromAPI<any>(`/anime/${id}/full`, {}, RequestPriority.HIGH);
+        if (!isSubscribed) return;
         setAnime(animeData.data);
 
-        // Fetch characters
-        const charactersData = await fetchFromAPI<any>(`/anime/${id}/characters`);
-        setCharacters(charactersData.data || []);
+        // Fetch other data with MEDIUM priority
+        const [charactersData, reviewsData, recommendationsData] = await Promise.all([
+          fetchFromAPI<any>(`/anime/${id}/characters`, {}, RequestPriority.MEDIUM),
+          fetchFromAPI<any>(`/anime/${id}/reviews`, {}, RequestPriority.MEDIUM),
+          fetchFromAPI<any>(`/anime/${id}/recommendations`, {}, RequestPriority.MEDIUM)
+        ]);
 
-        // Fetch reviews for this specific anime
-        const reviewsData = await fetchFromAPI<any>(`/anime/${id}/reviews`);
-        setReviews(reviewsData.data || []);
-
-        // Fetch recommendations
-        const recommendationsData = await fetchFromAPI<any>(`/anime/${id}/recommendations`);
-        setRecommendations(recommendationsData.data || []);
-
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setError('Failed to load content. Please try again later.');
+        if (!isSubscribed) return;
+        setCharacters(charactersData.data);
+        setReviews(reviewsData.data);
+        setRecommendations(recommendationsData.data);
+      } catch (err) {
+        if (!isSubscribed) return;
+        setError('Failed to fetch anime data');
+        console.error('Error fetching anime data:', err);
       } finally {
+        if (!isSubscribed) return;
         setIsLoading(false);
       }
     };
 
-    fetchData();
-  }, [id]);
+    fetchAnimeData();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [id]); // Only re-run when id changes
 
   if (isLoading) {
     return (
