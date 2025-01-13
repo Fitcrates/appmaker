@@ -63,22 +63,23 @@ export function Slideshow() {
   if (!currentAnime) return null;
 
   return (
-    <div className="relative h-[500px] group">
+    <div className="relative h-screen">
       {/* Background Image with Link */}
       <Link to={`/anime/${currentAnime.mal_id}`}>
         <div
-          className="absolute inset-0 bg-cover bg-center cursor-pointer transition-transform duration-300 group-hover:scale-105"
+          className="absolute inset-0 bg-center bg-no-repeat md:bg-contain bg-black"
           style={{
             backgroundImage: `url(${currentAnime.images.jpg.large_image_url})`,
+            backgroundPosition: 'center right',
           }}
         >
-          <div className="absolute inset-0 bg-black bg-opacity-60"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/40"></div>
         </div>
       </Link>
 
       {/* Content */}
       <div className="relative container mx-auto px-4 h-full flex items-center">
-        <div className="w-full md:w-1/2 ml-auto">
+        <div className="w-full md:w-1/2">
           <div className="text-white space-y-4">
             <Link
               to={`/anime/${currentAnime.mal_id}`}
