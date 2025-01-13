@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchFromAPI } from '../utils/api';
 import { LazyLoad } from './LazyLoad';
+import { Pagination } from './Pagination'; // Import the new Pagination component
 
 interface Anime {
   mal_id: number;
@@ -57,31 +57,8 @@ export function Schedule() {
 
   return (
     <div id="schedule">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <h2 className="text-2xl font-bold">Upcoming Schedule</h2>
-        {pagination && (
-          <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-600">
-              Page {currentPage} of {pagination.last_visible_page}
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(pagination.last_visible_page, prev + 1))}
-                disabled={!pagination.has_next_page}
-                className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {loading ? (
@@ -89,28 +66,40 @@ export function Schedule() {
           <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {schedule.map((anime) => (
-            <LazyLoad key={anime.mal_id}>
-              <Link
-                to={`/anime/${anime.mal_id}`}
-                className="block bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-              >
-                <img
-                  src={anime.images.jpg.image_url}
-                  alt={anime.title}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="p-4">
-                  <h3 className="font-medium text-sm line-clamp-2">{anime.title}</h3>
-                  <div className="mt-2 text-sm text-gray-600">
-                    <div>{anime.aired?.string}</div>
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {schedule.map((anime) => (
+              <LazyLoad key={anime.mal_id}>
+                <Link
+                  to={`/anime/${anime.mal_id}`}
+                  className="block bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  <img
+                    src={anime.images.jpg.image_url}
+                    alt={anime.title}
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="p-4">
+                    <h3 className="font-medium text-sm line-clamp-2">{anime.title}</h3>
+                    <div className="mt-2 text-sm text-gray-600">
+                      <div>{anime.aired?.string}</div>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            </LazyLoad>
-          ))}
-        </div>
+                </Link>
+              </LazyLoad>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {pagination && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={pagination.last_visible_page}
+              onPageChange={(page) => setCurrentPage(page)}
+              isLoading={loading}
+            />
+          )}
+        </>
       )}
     </div>
   );
