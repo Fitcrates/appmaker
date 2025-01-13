@@ -386,13 +386,11 @@ export function AnimePage() {
         title="Trailer"
       >
         {showTrailer && anime?.trailer?.embed_url && (
-          <div className="aspect-w-4 aspect-h-3">
+          <div className="relative w-full" style={{ height: '70vh' }}>
             <iframe
               src={anime.trailer.embed_url}
               frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="w-full h-full"
+              className="absolute top-0 left-0 w-full h-full"
             ></iframe>
           </div>
         )}
