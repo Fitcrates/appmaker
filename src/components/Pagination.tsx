@@ -34,14 +34,14 @@ export function Pagination({ currentPage, totalPages, onPageChange, isLoading }:
       <button
         onClick={() => onPageChange(1)}
         disabled={currentPage === 1 || isLoading}
-        className="px-3 py-1 rounded bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50"
+        className="px-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50"
       >
         1
       </button>
 
       {/* Current Page Button */}
       <span
-        className="px-3 py-1 rounded bg-purple-600 text-white"
+        className="px-2 rounded-full bg-purple-600 text-white"
       >
         {currentPage}
       </span>
@@ -50,7 +50,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, isLoading }:
       <button
         onClick={() => onPageChange(totalPages)}
         disabled={currentPage === totalPages || isLoading}
-        className="px-3 py-1 rounded bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50"
+        className="px-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50"
       >
         {totalPages}
       </button>
@@ -65,18 +65,18 @@ export function Pagination({ currentPage, totalPages, onPageChange, isLoading }:
       </button>
 
       {/* Go-to-Page Input */}
-      <div className="flex items-center px-12 space-x-2">
+      <div className="flex items-center px-2 space-x-2">
         <input
           type="number"
           value={goToPage}
           onChange={(e) => setGoToPage(e.target.value)}
           placeholder="Page"
-          className="w-16 px-2 py-1 text-center text-gray-300 bg-gray-900 rounded"
+          className="w-16 py-1 text-center text-gray-300 bg-gray-900 rounded-full"
         />
         <button
           onClick={handleGoToPage}
           disabled={isLoading || !goToPage}
-          className="px-4 py-1 bg-purple-600 text-white rounded hover:bg-purple-500 disabled:opacity-50"
+          className="px-2 bg-purple-600 text-white rounded-full hover:bg-purple-500 disabled:opacity-50"
         >
           Go
         </button>
