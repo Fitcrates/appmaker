@@ -12,24 +12,24 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="fixed inset-0 bg-black/60"
         onClick={onClose}
       ></div>
       
-      <div className="relative bg-gray-900/10 backdrop-blur rounded-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white/10 backdrop-blur rounded-lg w-full max-w-3xl mx-4 h-[85vh] overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-xl font-semibold">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-1 hover:bg-gray-100 rounded-full"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           </button>
         </div>
         
-        <div className="p-6">
+        <div className="h-[calc(85vh-4rem)] overflow-y-auto">
           {children}
         </div>
       </div>
