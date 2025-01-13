@@ -151,8 +151,8 @@ export function Navbar() {
           ) : searchResults.length > 0 ? (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6">
-                {searchResults.map((anime) => (
-                  <LazyLoad key={anime.mal_id}>
+                {searchResults.map((anime, index) => (
+                  <LazyLoad key={`${anime.mal_id}-${index}`}>
                     <Link
                       to={`/anime/${anime.mal_id}`}
                       onClick={() => setIsSearchOpen(false)}
