@@ -29,7 +29,7 @@ export function Schedule() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const itemsPerPage = 25;
+  const itemsPerPage = 15;
 
   const fetchSchedule = async (page: number) => {
     try {
