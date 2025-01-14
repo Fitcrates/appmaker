@@ -31,6 +31,9 @@ export function TopAnime() {
   const [hoveredAnime, setHoveredAnime] = useState<any | null>(null);
   const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [touchTimer, setTouchTimer] = useState<NodeJS.Timeout | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [isScrolling, setIsScrolling] = useState(false);
 
   const itemsPerPage = 10;
 
@@ -128,6 +131,59 @@ export function TopAnime() {
     }
   };
 
+  const handleTouchStart = (anime: any, event: React.TouchEvent) => {
+    setTouchStartY(event.touches[0].clientY);
+    const timer = setTimeout(() => {
+      if (!isScrolling) {
+        setHoveredAnime(anime);
+        const rect = event.currentTarget.getBoundingClientRect();
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const previewWidth = 300;
+        const previewHeight = 400;
+        
+        const x = Math.max(10, Math.min(screenWidth - previewWidth - 10, (screenWidth - previewWidth) / 2));
+        let y = Math.min(rect.bottom + 10, screenHeight - previewHeight - 10);
+        
+        if (y + previewHeight > screenHeight - 10) {
+          y = Math.max(10, rect.top - previewHeight - 10);
+        }
+        
+        setPreviewPosition({ x, y });
+      }
+    }, 500); // 500ms long press
+    setTouchTimer(timer);
+  };
+
+  const handleTouchMove = (event: React.TouchEvent) => {
+    if (touchStartY !== null) {
+      const moveY = Math.abs(event.touches[0].clientY - touchStartY);
+      if (moveY > 10) { // Threshold for detecting scroll
+        setIsScrolling(true);
+        if (touchTimer) {
+          clearTimeout(touchTimer);
+          setTouchTimer(null);
+        }
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsScrolling(false);
+    setTouchStartY(null);
+    if (touchTimer) {
+      clearTimeout(touchTimer);
+      setTouchTimer(null);
+    }
+  };
+
+  const handleClick = (animeId: number, event: React.MouseEvent) => {
+    event.preventDefault();
+    if (!hoveredAnime) {
+      window.location.href = `/anime/${animeId}`;
+    }
+  };
+
   if (error) {
     return <div className="text-red-600 text-center py-8">{error}</div>;
   }
@@ -145,13 +201,16 @@ export function TopAnime() {
       ) : (
         <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 ${hoveredAnime ? 'blur-sm' : ''}`}>
           {animeList.map((anime) => (
-            <div
+            <Link
               key={anime.mal_id}
-              onClick={(e) => handleNavigate(anime.mal_id)}
+              to={`/anime/${anime.mal_id}`}
+              className="relative group"
+              onClick={(e) => handleClick(anime.mal_id, e)}
               onMouseEnter={isMobile ? undefined : (e) => handleInteraction(anime, e)}
               onMouseLeave={handleMouseLeave}
-              onTouchStart={isMobile ? (e) => handleInteraction(anime, e) : undefined}
-              className="relative group cursor-pointer"
+              onTouchStart={(e) => handleTouchStart(anime, e)}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
             >
               <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-200 group-hover:scale-105 group-hover:shadow-xl">
                 <div className="relative aspect-[3/4]">
@@ -173,7 +232,7 @@ export function TopAnime() {
                   <h3 className="font-medium text-sm line-clamp-2">{anime.title}</h3>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
