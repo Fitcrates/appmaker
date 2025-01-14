@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Star } from 'lucide-react';
 import { fetchFromAPI } from '../utils/api';
 import { LazyLoad } from './LazyLoad';
@@ -35,6 +35,8 @@ export function TopAnime() {
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const [isScrolling, setIsScrolling] = useState(false);
 
+  const navigate = useNavigate();
+
   const itemsPerPage = 10;
 
   const fetchTopAnime = async (page: number) => {
@@ -65,33 +67,9 @@ export function TopAnime() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleInteraction = (anime: any, event: React.MouseEvent | React.TouchEvent) => {
-    event.preventDefault(); // Prevent navigation
-    
-    if (isMobile) {
-      // On mobile, toggle preview
-      setHoveredAnime(hoveredAnime === anime ? null : anime);
-      if (!hoveredAnime) {
-        const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-        const screenWidth = window.innerWidth;
-        const screenHeight = window.innerHeight;
-        const previewWidth = 300;
-        const previewHeight = 400;
-        
-        // Center horizontally and position below the card
-        const x = Math.max(10, Math.min(screenWidth - previewWidth - 10, (screenWidth - previewWidth) / 2));
-        let y = Math.min(rect.bottom + 10, screenHeight - previewHeight - 10);
-        
-        // If there's not enough space below, show above
-        if (y + previewHeight > screenHeight - 10) {
-          y = Math.max(10, rect.top - previewHeight - 10);
-        }
-        
-        setPreviewPosition({ x, y });
-      }
-    } else {
-      // Desktop behavior remains the same
-      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  const handleMouseEnter = (anime: any, event: React.MouseEvent) => {
+    if (!isMobile) {
+      const rect = event.currentTarget.getBoundingClientRect();
       const screenWidth = window.innerWidth;
       const screenHeight = window.innerHeight;
       const previewWidth = 300;
@@ -120,7 +98,7 @@ export function TopAnime() {
 
   const handleNavigate = (animeId: number) => {
     if (!hoveredAnime) {
-      window.location.href = `/anime/${animeId}`;
+      navigate(`/anime/${animeId}`);
     }
   };
 
@@ -177,10 +155,34 @@ export function TopAnime() {
     }
   };
 
+  const handlePreviewClick = (anime: any, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setHoveredAnime(anime);
+    
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    const previewWidth = 300;
+    const previewHeight = 400;
+    
+    let x = rect.right + 10;
+    if (x + previewWidth + 20 > screenWidth) {
+      x = rect.left - previewWidth - 10;
+    }
+    
+    let y = rect.top;
+    if (y + previewHeight > screenHeight - 10) {
+      y = screenHeight - previewHeight - 10;
+    }
+    
+    setPreviewPosition({ x, y });
+  };
+
   const handleClick = (animeId: number, event: React.MouseEvent) => {
     event.preventDefault();
     if (!hoveredAnime) {
-      window.location.href = `/anime/${animeId}`;
+      navigate(`/anime/${animeId}`);
     }
   };
 
@@ -199,18 +201,12 @@ export function TopAnime() {
           <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
         </div>
       ) : (
-        <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 ${hoveredAnime ? 'blur-sm' : ''}`}>
+        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 ${hoveredAnime ? 'blur-sm' : ''}`}>
           {animeList.map((anime) => (
             <Link
               key={anime.mal_id}
               to={`/anime/${anime.mal_id}`}
               className="relative group"
-              onClick={(e) => handleClick(anime.mal_id, e)}
-              onMouseEnter={isMobile ? undefined : (e) => handleInteraction(anime, e)}
-              onMouseLeave={handleMouseLeave}
-              onTouchStart={(e) => handleTouchStart(anime, e)}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
             >
               <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-200 group-hover:scale-105 group-hover:shadow-xl">
                 <div className="relative aspect-[3/4]">
@@ -222,11 +218,26 @@ export function TopAnime() {
                     />
                   </LazyLoad>
                   {anime.score && (
-                    <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-full text-sm flex items-center">
+                    <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded-full text-sm flex items-center">
                       <Star className="h-4 w-4 text-yellow-400 mr-1" />
                       {anime.score}
                     </div>
                   )}
+                  {/* Preview trigger button */}
+                  <button
+                    className="absolute top-2 right-2 bg-black/70 text-white w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+                    onClick={(e) => handlePreviewClick(anime, e)}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      handleTouchStart(anime, e);
+                    }}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
                 </div>
                 <div className="p-4">
                   <h3 className="font-medium text-sm line-clamp-2">{anime.title}</h3>
@@ -237,45 +248,29 @@ export function TopAnime() {
         </div>
       )}
 
-      {/* Preview Popup */}
+      {/* Preview */}
       {hoveredAnime && (
-        <>
-          {/* Overlay for mobile */}
-          {isMobile && (
-            <div 
-              className="fixed inset-0 bg-black/20 z-40"
-              onClick={handleOverlayClick}
-            />
-          )}
-          <div
-            className="fixed z-50 animate-fade-in md:w-[300px] w-[calc(100%-20px)]"
-            style={{
-              left: `${previewPosition.x}px`,
-              top: `${previewPosition.y}px`,
-              maxWidth: isMobile ? 'calc(100vw - 20px)' : '300px'
-            }}
-          >
-            <div className="relative">
-              {isMobile && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setHoveredAnime(null);
-                  }}
-                  className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center z-10"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-              <AnimePreview 
-                anime={hoveredAnime} 
-                className="shadow-2xl ring-1 ring-black/5 max-h-[80vh] overflow-y-auto" 
-              />
-            </div>
-          </div>
-        </>
+        <div
+          className="fixed z-50"
+          style={{
+            left: previewPosition.x,
+            top: previewPosition.y,
+            width: '300px',
+          }}
+        >
+          <AnimePreview
+            anime={hoveredAnime}
+            onClose={() => setHoveredAnime(null)}
+          />
+        </div>
+      )}
+
+      {/* Backdrop for mobile */}
+      {hoveredAnime && isMobile && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={() => setHoveredAnime(null)}
+        />
       )}
 
       {pagination && (
