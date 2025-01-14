@@ -15,19 +15,41 @@ interface AnimeData {
   score: number;
   genres: Array<{ name: string }>;
   studios: Array<{ name: string }>;
+  rating: string;
 }
 
 export function Slideshow() {
   const [currentAnime, setCurrentAnime] = useState<AnimeData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
   const fetchRandomAnime = async () => {
+    if (retryCount >= MAX_RETRIES) {
+      setError('Unable to fetch appropriate content. Please try again later.');
+      setRetryCount(0);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
+    
     try {
       const response = await fetchFromAPI<any>('/random/anime');
       if (response?.data) {
+        // Check if the anime is Rx-rated
+        const isRxRated = response.data.rating === 'Rx - Hentai';
+        
+        if (isRxRated) {
+          // If it's Rx-rated, increment retry count and try again after a delay
+          setRetryCount(prev => prev + 1);
+          setTimeout(fetchRandomAnime, 1000); // Add 1 second delay between retries
+          return;
+        }
+        
+        // Reset retry count on success
+        setRetryCount(0);
         setCurrentAnime(response.data);
       }
     } catch (error) {
@@ -40,8 +62,12 @@ export function Slideshow() {
 
   useEffect(() => {
     fetchRandomAnime();
-    const interval = setInterval(fetchRandomAnime, 10000);
-    return () => clearInterval(interval);
+    // Change interval to 15 seconds to reduce API load
+    const interval = setInterval(fetchRandomAnime, 15000);
+    return () => {
+      clearInterval(interval);
+      setRetryCount(0); // Reset retry count on unmount
+    };
   }, []);
 
   if (isLoading && !currentAnime) {
