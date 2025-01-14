@@ -57,20 +57,33 @@ export function Schedule() {
   const handleMouseEnter = (anime: any, event: React.MouseEvent) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const screenWidth = window.innerWidth;
-    const previewWidth = 300; // Width of our preview component
-    
-    // Calculate x position - if too close to right edge, show on left side
-    let x = rect.right + 10;
-    if (x + previewWidth + 20 > screenWidth) {
-      x = rect.left - previewWidth - 10;
-    }
-    
-    // Calculate y position - ensure it stays within viewport
-    let y = rect.top;
     const screenHeight = window.innerHeight;
+    const previewWidth = 300; // Width of our preview component
     const previewHeight = 400; // Approximate height of preview
-    if (y + previewHeight > screenHeight) {
-      y = screenHeight - previewHeight - 20;
+    const isMobile = screenWidth < 768; // Mobile breakpoint
+    
+    let x, y;
+    
+    if (isMobile) {
+      // On mobile, center horizontally and position below the card
+      x = Math.max(10, Math.min(screenWidth - previewWidth - 10, (screenWidth - previewWidth) / 2));
+      y = Math.min(rect.bottom + 10, screenHeight - previewHeight - 10);
+      
+      // If there's not enough space below, show above
+      if (y + previewHeight > screenHeight - 10) {
+        y = Math.max(10, rect.top - previewHeight - 10);
+      }
+    } else {
+      // Desktop positioning
+      x = rect.right + 10;
+      if (x + previewWidth + 20 > screenWidth) {
+        x = rect.left - previewWidth - 10;
+      }
+      
+      y = rect.top;
+      if (y + previewHeight > screenHeight - 10) {
+        y = screenHeight - previewHeight - 10;
+      }
     }
     
     setPreviewPosition({ x, y });
@@ -97,7 +110,7 @@ export function Schedule() {
         </div>
       ) : (
         <div className="relative">
-          <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 ${hoveredAnime ? 'blur-sm' : ''}`}>
+          <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 ${hoveredAnime ? 'blur-sm' : ''}`}>
             {schedule.map((anime) => (
               <Link
                 key={anime.mal_id}
@@ -130,13 +143,17 @@ export function Schedule() {
           {/* Preview Popup */}
           {hoveredAnime && (
             <div
-              className="fixed z-50 pointer-events-none animate-fade-in"
+              className="fixed z-50 pointer-events-none animate-fade-in md:w-[300px] w-[calc(100%-20px)]"
               style={{
                 left: `${previewPosition.x}px`,
                 top: `${previewPosition.y}px`,
+                maxWidth: window.innerWidth < 768 ? 'calc(100vw - 20px)' : '300px'
               }}
             >
-              <AnimePreview anime={hoveredAnime} className="shadow-2xl ring-1 ring-black/5" />
+              <AnimePreview 
+                anime={hoveredAnime} 
+                className="shadow-2xl ring-1 ring-black/5 max-h-[80vh] overflow-y-auto" 
+              />
             </div>
           )}
 
