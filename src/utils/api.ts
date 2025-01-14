@@ -62,8 +62,8 @@ class RequestQueue {
   private isProcessing = false;
   private lastRequestTime = 0;
   private requestsInLastMinute = 0;
-  private readonly minDelay = 1000; // 1 second between requests
-  private readonly maxRequestsPerMinute = 30;
+  private readonly minDelay = 750; // 0.75 second between requests
+  private readonly maxRequestsPerMinute = 60; // Updated to match Jikan API limit
 
   async add<T>(request: () => Promise<T>, priority: RequestPriority = RequestPriority.MEDIUM): Promise<T> {
     return new Promise((resolve, reject) => {
