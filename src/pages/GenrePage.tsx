@@ -45,11 +45,6 @@ export function GenrePage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [topAnime, setTopAnime] = useState<Anime[]>([]);
   const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
-  const [hoveredAnime, setHoveredAnime] = useState<any | null>(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [touchTimer, setTouchTimer] = useState<NodeJS.Timeout | null>(null);
-  const [touchStartY, setTouchStartY] = useState<number | null>(null);
-  const [isScrolling, setIsScrolling] = useState(false);
   const [pagination, setPagination] = useState<{ has_next_page: boolean; last_visible_page: number } | null>(null);
   const initialMount = useRef(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -66,14 +61,6 @@ export function GenrePage() {
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Fetch top anime on mount
@@ -100,107 +87,59 @@ export function GenrePage() {
     
     setIsGenresLoading(true);
     try {
-      const response = await fetchFromAPI<{ data: Genre[] }>('/genres/anime', {}, RequestPriority.HIGH);
+      const response = await fetchFromAPI<{ data: Genre[] }>('/genres/anime');
       if (response?.data) {
         setGenres(response.data);
-        // Select the first genre by default only on initial mount
-        if (response.data.length > 0 && initialMount.current) {
-          // setSelectedGenre(response.data[0]);
-          initialMount.current = false;
-        }
       }
-    } catch (error) {
-      console.error('Error fetching genres:', error);
-      setError('Failed to load genres');
+    } catch (err) {
+      console.error('Error fetching genres:', err);
     } finally {
       setIsGenresLoading(false);
     }
-  }, [isGenresLoading, genres.length]);
+  }, [genres.length, isGenresLoading]);
 
-  // Fetch anime for selected genre
-  const fetchAnimeByGenre = useCallback(async () => {
-    if (!selectedGenres.length) return;
-
-    setGenreLoading(true);
-    setError(null);
-    try {
-      const genres = selectedGenres.map(genre => genre.mal_id).join(',');
-      const response = await fetchFromAPI<GenreAnimeResponse>(
-        `/anime?genres=${genres}&page=${currentPage}&limit=${itemsPerPage}&order_by=score&sort=desc`,
-        {},
-        RequestPriority.MEDIUM
-      );
-      setAnimeList(response.data);
-      setPagination(response.pagination);
-    } catch (err) {
-      console.error('Error fetching anime:', err);
-      setError('Failed to load anime');
-    } finally {
-      setGenreLoading(false);
-    }
-  }, [selectedGenres, currentPage]);
-
-  // Initial genres fetch
   useEffect(() => {
-    let ignore = false;
-    
-    const init = async () => {
-      await fetchGenres();
-      if (!ignore && initialMount.current) {
-        initialMount.current = false;
-      }
-    };
-    
-    init();
-    return () => {
-      ignore = true;
-    };
+    fetchGenres();
   }, [fetchGenres]);
 
-  // Fetch anime when genre or page changes
+  // Fetch anime for selected genres
   useEffect(() => {
-    let ignore = false;
-    
-    const fetchData = async () => {
-      await fetchAnimeByGenre();
+    const fetchAnimeForGenres = async () => {
+      if (selectedGenres.length === 0) {
+        setAnimeList([]);
+        setPagination(null);
+        return;
+      }
+
+      setGenreLoading(true);
+      try {
+        const genreIds = selectedGenres.map(g => g.mal_id).join(',');
+        const response = await fetchFromAPI<GenreAnimeResponse>('/anime', {
+          genres: genreIds,
+          page: currentPage.toString(),
+          limit: itemsPerPage.toString(),
+          order_by: 'score',
+          sort: 'desc'
+        });
+        
+        if (response?.data) {
+          setAnimeList(response.data);
+          setPagination(response.pagination);
+        }
+      } catch (err) {
+        console.error('Error fetching anime for genres:', err);
+        setError('Failed to load anime');
+      } finally {
+        setGenreLoading(false);
+      }
     };
-    
-    if (!ignore) {
-      fetchData();
+
+    if (!initialMount.current) {
+      fetchAnimeForGenres();
+    } else {
+      initialMount.current = false;
     }
-    
-    return () => {
-      ignore = true;
-    };
-  }, [fetchAnimeByGenre]);
-
-  const handleOverlayClick = (event: React.MouseEvent) => {
-    event.preventDefault();
-    setSelectedAnime(null);
-  };
-
-  const handlePreviewClick = (anime: Anime, event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setSelectedAnime(anime);
-  };
-
-  const handleTouchStart = (anime: Anime, event: React.TouchEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setSelectedAnime(anime);
-  };
-
-  const handleTouchMove = (event: React.TouchEvent) => {
-    // Only prevent default if we have a preview open
-    if (selectedAnime) {
-      event.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = () => {
-    // No need for complex touch handling since we're using fixed positioning
-  };
+  }, [selectedGenres, currentPage]);
 
   const renderAnimeSection = (title: string, animeData: Anime[], isLoading: boolean) => (
     <div className="relative mb-12">
@@ -288,12 +227,6 @@ export function GenrePage() {
   const filteredGenres = genres.filter(genre =>
     genre.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const handleNavigate = (animeId: number) => {
-    if (!selectedAnime) {
-      navigate(`/anime/${animeId}`);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -384,14 +317,14 @@ export function GenrePage() {
                   currentPage={currentPage}
                   totalPages={pagination.last_visible_page}
                   onPageChange={setCurrentPage}
-                  hasNextPage={pagination.has_next_page}
+                  isLoading={genreLoading}
                 />
               </div>
             )}
           </>
         )}
 
-        {/* Preview */}
+        {/* Preview Modal */}
         {selectedAnime && (
           <AnimePreview
             isOpen={!!selectedAnime}
