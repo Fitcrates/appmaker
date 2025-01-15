@@ -177,37 +177,31 @@ export function GenrePage() {
     event.preventDefault();
     event.stopPropagation();
     
-    if (!isMobile) {
-      const rect = event.currentTarget.getBoundingClientRect();
-      const screenWidth = window.innerWidth;
-      const screenHeight = window.innerHeight;
-      const previewWidth = 300;
-      const previewHeight = 400;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    const previewWidth = 300;
+    const previewHeight = 400;
 
-      let x = rect.right + 10;
-      if (x + previewWidth > screenWidth) {
-        x = Math.max(10, rect.left - previewWidth - 10);
-      }
-
-      let y = Math.min(rect.top, screenHeight - previewHeight - 10);
-      if (y < 10) y = 10;
-
-      setPreviewPosition({ x, y });
-      setHoveredAnime(anime);
+    let x = rect.right + 10;
+    if (x + previewWidth > screenWidth) {
+      x = Math.max(10, rect.left - previewWidth - 10);
     }
+
+    let y = Math.min(rect.top, screenHeight - previewHeight - 10);
+    if (y < 10) y = 10;
+
+    setPreviewPosition({ x, y });
+    setHoveredAnime(anime);
   };
 
   const handleTouchStart = (anime: any, event: React.TouchEvent) => {
-    setTouchStartY(event.touches[0].clientY);
-    setIsScrolling(false);
+    event.preventDefault();
+    event.stopPropagation();
     
-    const timer = setTimeout(() => {
-      if (!isScrolling) {
-        setHoveredAnime(anime);
-      }
-    }, 500);
-    
-    setTouchTimer(timer);
+    if (isMobile) {
+      setHoveredAnime(anime);
+    }
   };
 
   const handleTouchMove = (event: React.TouchEvent) => {
@@ -399,6 +393,16 @@ export function GenrePage() {
                     </li>
                   ))}
                 </ul>
+
+                {/* OK Button */}
+                <div className="p-2 border-t sticky bottom-0 bg-white">
+                  <button
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    OK
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -431,9 +435,11 @@ export function GenrePage() {
           <div
             className="fixed z-50"
             style={{
-              left: previewPosition.x,
-              top: previewPosition.y,
-              width: '300px',
+              left: isMobile ? '50%' : previewPosition.x,
+              top: isMobile ? '50%' : previewPosition.y,
+              width: isMobile ? '90%' : '300px',
+              transform: isMobile ? 'translate(-50%, -50%)' : 'none',
+              maxWidth: isMobile ? '400px' : 'none'
             }}
           >
             <AnimePreview
