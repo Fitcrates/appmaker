@@ -5,6 +5,7 @@ import { LazyLoad } from '../components/LazyLoad';
 import { Star } from 'lucide-react';
 import { Pagination } from '../components/Pagination';
 import { AnimePreview } from '../components/AnimePreview';
+import { AnimeCard } from '../components/AnimeCard';
 
 interface Genre {
   mal_id: number;
@@ -43,8 +44,8 @@ export function GenrePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [topAnime, setTopAnime] = useState<Anime[]>([]);
+  const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
   const [hoveredAnime, setHoveredAnime] = useState<any | null>(null);
-  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [touchTimer, setTouchTimer] = useState<NodeJS.Timeout | null>(null);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
@@ -173,56 +174,32 @@ export function GenrePage() {
     };
   }, [fetchAnimeByGenre]);
 
-  const handlePreviewClick = (anime: any, event: React.MouseEvent) => {
+  const handleOverlayClick = (event: React.MouseEvent) => {
     event.preventDefault();
-    event.stopPropagation();
-    
-    const rect = event.currentTarget.getBoundingClientRect();
-    const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
-    const previewWidth = 300;
-    const previewHeight = 400;
-
-    let x = rect.right + 10;
-    if (x + previewWidth > screenWidth) {
-      x = Math.max(10, rect.left - previewWidth - 10);
-    }
-
-    let y = Math.min(rect.top, screenHeight - previewHeight - 10);
-    if (y < 10) y = 10;
-
-    setPreviewPosition({ x, y });
-    setHoveredAnime(anime);
+    setSelectedAnime(null);
   };
 
-  const handleTouchStart = (anime: any, event: React.TouchEvent) => {
+  const handlePreviewClick = (anime: Anime, event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    
-    if (isMobile) {
-      setHoveredAnime(anime);
-    }
+    setSelectedAnime(anime);
+  };
+
+  const handleTouchStart = (anime: Anime, event: React.TouchEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedAnime(anime);
   };
 
   const handleTouchMove = (event: React.TouchEvent) => {
-    if (touchStartY !== null) {
-      const deltaY = Math.abs(event.touches[0].clientY - touchStartY);
-      if (deltaY > 10) {
-        setIsScrolling(true);
-        if (touchTimer) {
-          clearTimeout(touchTimer);
-          setTouchTimer(null);
-        }
-      }
+    // Only prevent default if we have a preview open
+    if (selectedAnime) {
+      event.preventDefault();
     }
   };
 
   const handleTouchEnd = () => {
-    if (touchTimer) {
-      clearTimeout(touchTimer);
-      setTouchTimer(null);
-    }
-    setTouchStartY(null);
+    // No need for complex touch handling since we're using fixed positioning
   };
 
   const renderAnimeSection = (title: string, animeData: Anime[], isLoading: boolean) => (
@@ -232,84 +209,68 @@ export function GenrePage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-20">
+        <div className="flex justify-center items-center min-h-[200px]">
           <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
         </div>
       ) : (
-        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 ${hoveredAnime ? 'blur-sm' : ''}`}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {animeData.map((anime) => (
-            <Link
-              key={anime.mal_id}
-              to={`/anime/${anime.mal_id}`}
-              className="relative group"
-            >
-              <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-200 group-hover:scale-105 group-hover:shadow-xl">
-                <div className="relative aspect-[3/4]">
-                  <LazyLoad>
-                    <img
-                      src={anime.images.jpg.image_url}
-                      alt={anime.title}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  </LazyLoad>
-                  {anime.score && (
-                    <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded-full text-sm flex items-center">
-                      <Star className="h-4 w-4 text-yellow-400 mr-1" />
-                      {anime.score}
-                    </div>
-                  )}
-                  <button
-                    className="absolute top-2 right-2 bg-black/70 text-white w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
-                    onClick={(e) => handlePreviewClick(anime, e)}
-                    onTouchStart={(e) => {
-                      e.preventDefault();
-                      handleTouchStart(anime, e);
-                    }}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </button>
+            <div key={anime.mal_id} className="relative group">
+              <Link
+                to={`/anime/${anime.mal_id}`}
+                className="block"
+                onClick={(e) => {
+                  if (selectedAnime) {
+                    e.preventDefault();
+                  }
+                }}
+              >
+                <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-200 hover:shadow-xl">
+                  <div className="relative aspect-[3/4]">
+                    <LazyLoad>
+                      <img
+                        src={anime.images.jpg.image_url}
+                        alt={anime.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    </LazyLoad>
+                    {anime.score && (
+                      <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded-full text-sm flex items-center">
+                        <Star className="h-4 w-4 text-yellow-400 mr-1" />
+                        {anime.score}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-medium text-sm line-clamp-2">{anime.title}</h3>
+                  </div>
                 </div>
-                <div className="p-4">
-                  <h3 className="font-medium text-sm line-clamp-2">{anime.title}</h3>
-                </div>
-              </div>
-            </Link>
+              </Link>
+              
+              {/* Info Button */}
+              <button
+                className="absolute top-2 right-2 bg-black/70 text-white w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center hover:bg-black/80"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSelectedAnime(anime);
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSelectedAnime(anime);
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+            </div>
           ))}
         </div>
       )}
     </div>
   );
-
-  const handleMouseEnter = (anime: any, event: React.MouseEvent) => {
-    if (!isMobile) {
-      const rect = event.currentTarget.getBoundingClientRect();
-      const screenWidth = window.innerWidth;
-      const screenHeight = window.innerHeight;
-      const previewWidth = 300;
-      const previewHeight = 400;
-
-      let x = rect.right + 10;
-      if (x + previewWidth > screenWidth) {
-        x = Math.max(10, rect.left - previewWidth - 10);
-      }
-
-      let y = Math.min(rect.top, screenHeight - previewHeight - 10);
-      if (y < 10) y = 10;
-
-      setPreviewPosition({ x, y });
-      setHoveredAnime(anime);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (!isMobile) {
-      setHoveredAnime(null);
-    }
-  };
 
   const toggleGenre = (genre: Genre) => {
     setSelectedGenres(prev => {
@@ -329,7 +290,7 @@ export function GenrePage() {
   );
 
   const handleNavigate = (animeId: number) => {
-    if (!hoveredAnime) {
+    if (!selectedAnime) {
       navigate(`/anime/${animeId}`);
     }
   };
@@ -431,29 +392,11 @@ export function GenrePage() {
         )}
 
         {/* Preview */}
-        {hoveredAnime && (
-          <div
-            className="fixed z-50"
-            style={{
-              left: isMobile ? '50%' : previewPosition.x,
-              top: isMobile ? '50%' : previewPosition.y,
-              width: isMobile ? '90%' : '300px',
-              transform: isMobile ? 'translate(-50%, -50%)' : 'none',
-              maxWidth: isMobile ? '400px' : 'none'
-            }}
-          >
-            <AnimePreview
-              anime={hoveredAnime}
-              onClose={() => setHoveredAnime(null)}
-            />
-          </div>
-        )}
-
-        {/* Backdrop for mobile */}
-        {hoveredAnime && isMobile && (
-          <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setHoveredAnime(null)}
+        {selectedAnime && (
+          <AnimePreview
+            isOpen={!!selectedAnime}
+            onClose={() => setSelectedAnime(null)}
+            anime={selectedAnime}
           />
         )}
       </div>
