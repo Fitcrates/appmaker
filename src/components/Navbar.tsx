@@ -42,7 +42,7 @@ export function Navbar() {
       const response = await fetchFromAPI<any>('/anime', {
         q: searchQuery,
         page: page.toString(),
-        limit: '25',
+        limit: '15',
         sfw: 'true'
       });
 
@@ -80,7 +80,7 @@ export function Navbar() {
 
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="p-2 text-gray-600 hover:text-gray-900 focus:outline-none"
+            className="p-2 text-gray-600 hover:transform hover:scale-105 focus:outline-none"
             aria-label="Search"
           >
             <Search className="h-5 w-5" />
@@ -113,7 +113,7 @@ export function Navbar() {
                       handleSearch(1);
                     }
                   }}
-                  placeholder="Search anime..."
+                  placeholder="Search anime by name..."
                   className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {searchQuery && (
