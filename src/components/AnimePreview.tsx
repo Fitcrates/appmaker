@@ -9,27 +9,19 @@ interface AnimePreviewProps {
 
 export function AnimePreview({ anime, className = '', onClose }: AnimePreviewProps) {
   return (
-   <>
-      {/* Backdrop */}
-      <div
-        className="backdrop"
+    <div className={`bg-white rounded-lg shadow-xl overflow-hidden ${className}`}>
+      {/* Close button */}
+      <button
         onClick={onClose}
-      ></div>
+        className="absolute top-2 right-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+      >
+        <X className="w-4 h-4 text-gray-600" />
+      </button>
 
-      {/* Popup */}
-      <div className={`anime-preview animate-fade-in ${className}`}>
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-        >
-          <X className="w-4 h-4 text-gray-600" />
-        </button>
-
-        {/* Content */}
-        <div className="p-4 pt-8">
-          <h3 className="font-semibold text-lg mb-2">{anime.title}</h3>
-        
+      {/* Content */}
+      <div className="p-4">
+        <h3 className="font-semibold text-lg mb-2">{anime.title}</h3>
+      
         <div className="space-y-2">
           {/* Rating and Episodes */}
           <div className="flex items-center justify-between text-sm">
@@ -54,46 +46,26 @@ export function AnimePreview({ anime, className = '', onClose }: AnimePreviewPro
             </div>
           )}
 
-          {/* Status and Season */}
-          <div className="text-sm space-y-1">
-            <div>Status: <span className="text-gray-700">{anime.status || 'Unknown'}</span></div>
-            {anime.season && (
-              <div>Season: <span className="text-gray-700">{anime.season} {anime.year}</span></div>
-            )}
-          </div>
+          {/* Synopsis */}
+          <p className="text-sm text-gray-600 line-clamp-4">
+            {anime.synopsis || 'No synopsis available'}
+          </p>
 
           {/* Genres */}
           {anime.genres && anime.genres.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
+            <div className="flex flex-wrap gap-1">
               {anime.genres.map((genre: any) => (
-                <span 
+                <span
                   key={genre.mal_id}
-                  className="px-2 py-1 bg-indigo-200 text-black rounded-full text-xs"
+                  className="text-xs px-2 py-1 bg-gray-100 rounded-full"
                 >
                   {genre.name}
                 </span>
               ))}
             </div>
           )}
-
-          {/* Synopsis */}
-          {anime.synopsis && (
-            <div className="mt-3">
-              <p className="text-sm text-black line-clamp-4">
-                {anime.synopsis}
-              </p>
-            </div>
-          )}
-
-          {/* Airing Information */}
-          {anime.aired && (
-            <div className="text-xs text-gray-700 mt-2">
-              {anime.aired.string}
-            </div>
-          )}
         </div>
       </div>
     </div>
-    </>
   );
 }
