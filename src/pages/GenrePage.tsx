@@ -326,11 +326,18 @@ export function GenrePage() {
 
         {/* Preview Modal */}
         {selectedAnime && (
-          <AnimePreview
-            isOpen={!!selectedAnime}
-            onClose={() => setSelectedAnime(null)}
-            anime={selectedAnime}
-          />
+          <div 
+            className="fixed inset-0 z-[100] touch-none"
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            <AnimePreview
+              isOpen={!!selectedAnime}
+              onClose={() => setSelectedAnime(null)}
+              anime={selectedAnime}
+            />
+          </div>
         )}
       </div>
     </div>
