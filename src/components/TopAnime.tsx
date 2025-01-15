@@ -1,205 +1,70 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Star } from 'lucide-react';
-import { fetchFromAPI } from '../utils/api';
 import { LazyLoad } from './LazyLoad';
-import { Pagination } from './Pagination';
+import { fetchFromAPI } from '../utils/api';
 import { AnimePreview } from './AnimePreview';
-
-interface Anime {
-  mal_id: number;
-  title: string;
-  images: {
-    jpg: {
-      image_url: string;
-    };
-  };
-  score: number;
-}
+import { Pagination } from './Pagination';
 
 interface PaginationData {
   has_next_page: boolean;
   last_visible_page: number;
+  current_page: number;
 }
 
 export function TopAnime() {
-  const [animeList, setAnimeList] = useState<Anime[]>([]);
+  const [topAnime, setTopAnime] = useState<any[]>([]);
+  const [selectedAnime, setSelectedAnime] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hoveredAnime, setHoveredAnime] = useState<any | null>(null);
-  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 });
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [touchTimer, setTouchTimer] = useState<NodeJS.Timeout | null>(null);
-  const [touchStartY, setTouchStartY] = useState<number | null>(null);
-  const [isScrolling, setIsScrolling] = useState(false);
-
-  const navigate = useNavigate();
-
-  const itemsPerPage = 10;
-
-  const fetchTopAnime = async (page: number) => {
-    try {
-      setLoading(true);
-      const response = await fetchFromAPI<{ data: Anime[]; pagination: PaginationData }>(
-        `/top/anime?page=${page}&limit=${itemsPerPage}`
-      );
-      setAnimeList(response.data);
-      setPagination(response.pagination);
-    } catch (error) {
-      console.error('Error fetching top anime:', error);
-      setError('Failed to load top anime');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const itemsPerPage = 15;
 
   useEffect(() => {
-    fetchTopAnime(currentPage);
+    const fetchTopAnime = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetchFromAPI('/top/anime', {
+          page: currentPage.toString(),
+          limit: itemsPerPage.toString(),
+          filter: 'bypopularity'
+        });
+        setTopAnime(response.data);
+        setPagination(response.pagination);
+      } catch (error) {
+        console.error('Error fetching top anime:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTopAnime();
   }, [currentPage]);
 
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const handleMouseEnter = (anime: any, event: React.MouseEvent) => {
-    if (!isMobile) {
-      const rect = event.currentTarget.getBoundingClientRect();
-      const screenWidth = window.innerWidth;
-      const screenHeight = window.innerHeight;
-      const previewWidth = 300;
-      const previewHeight = 400;
-  
-      // Ensure the preview is centered if there's enough space
-      let x = rect.right + 10;
-      if (x + previewWidth > screenWidth) {
-        x = Math.max(10, rect.left - previewWidth - 10); // Ensure within bounds
-      }
-  
-      let y = Math.min(rect.top, screenHeight - previewHeight - 10); // Keep it within the viewport vertically
-      if (y < 10) y = 10; // Prevent it from going above the top of the screen
-  
-      setPreviewPosition({ x, y });
-      setHoveredAnime(anime);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (!isMobile) {
-      setHoveredAnime(null);
-    }
-  };
-
-  const handleNavigate = (animeId: number) => {
-    if (!hoveredAnime) {
-      navigate(`/anime/${animeId}`);
-    }
-  };
-
-  const handleOverlayClick = (event: React.MouseEvent) => {
-    if (isMobile) {
-      event.preventDefault();
-      setHoveredAnime(null);
-    }
-  };
-
-  const handleTouchStart = (anime: any, event: React.TouchEvent) => {
-    setTouchStartY(event.touches[0].clientY);
-    const timer = setTimeout(() => {
-      if (!isScrolling) {
-        setHoveredAnime(anime);
-        const rect = event.currentTarget.getBoundingClientRect();
-        const screenWidth = window.innerWidth;
-        const screenHeight = window.innerHeight;
-        const previewWidth = 300;
-        const previewHeight = 400;
-        
-        const x = Math.max(10, Math.min(screenWidth - previewWidth - 10, (screenWidth - previewWidth) / 2));
-        let y = Math.min(rect.bottom + 10, screenHeight - previewHeight - 10);
-        
-        if (y + previewHeight > screenHeight - 10) {
-          y = Math.max(10, rect.top - previewHeight - 10);
-        }
-        
-        setPreviewPosition({ x, y });
-      }
-    }, 500); // 500ms long press
-    setTouchTimer(timer);
-  };
-
-  const handleTouchMove = (event: React.TouchEvent) => {
-    if (touchStartY !== null) {
-      const moveY = Math.abs(event.touches[0].clientY - touchStartY);
-      if (moveY > 10) { // Threshold for detecting scroll
-        setIsScrolling(true);
-        if (touchTimer) {
-          clearTimeout(touchTimer);
-          setTouchTimer(null);
-        }
-      }
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsScrolling(false);
-    setTouchStartY(null);
-    if (touchTimer) {
-      clearTimeout(touchTimer);
-      setTouchTimer(null);
-    }
-  };
-
-  const handlePreviewClick = (anime: any, event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setHoveredAnime(anime);
-  
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
-  
-    const previewWidth = 300; // Default preview width
-    const previewHeight = 400;
-  
-    const calculatedWidth = Math.min(screenWidth - 20, previewWidth);
-    const calculatedHeight = Math.min(screenHeight - 20, previewHeight);
-  
-    const x = Math.max(
-      10,
-      Math.min(screenWidth - calculatedWidth - 10, rect.left + rect.width / 2 - calculatedWidth / 2)
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[200px]">
+        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+      </div>
     );
-    const y = Math.max(
-      10,
-      Math.min(screenHeight - calculatedHeight - 10, rect.bottom + 10)
-    );
-  
-    setPreviewPosition({ x, y });
-  };
+  }
 
   return (
-    <div id="top-anime" className="relative mb-12">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Top Anime</h2>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-        </div>
-      ) : (
-        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 ${hoveredAnime ? 'blur-sm' : ''}`}>
-          {animeList.map((anime) => (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-6">Top Anime</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        {topAnime.map((anime) => (
+          <div key={anime.mal_id} className="relative group">
             <Link
-              key={anime.mal_id}
               to={`/anime/${anime.mal_id}`}
-              className="relative group"
+              className="block"
+              onClick={(e) => {
+                if (selectedAnime) {
+                  e.preventDefault();
+                }
+              }}
             >
-              <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-200 group-hover:scale-105 group-hover:shadow-xl">
+              <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-200 hover:shadow-xl">
                 <div className="relative aspect-[3/4]">
                   <LazyLoad>
                     <img
@@ -214,65 +79,54 @@ export function TopAnime() {
                       {anime.score}
                     </div>
                   )}
-                  {/* Preview trigger button */}
-                  <button
-                    className="absolute top-2 right-2 bg-black/70 text-white w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
-                    onClick={(e) => handlePreviewClick(anime, e)}
-                    onTouchStart={(e) => {
-                      e.preventDefault();
-                      handleTouchStart(anime, e);
-                    }}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </button>
                 </div>
                 <div className="p-4">
                   <h3 className="font-medium text-sm line-clamp-2">{anime.title}</h3>
                 </div>
               </div>
             </Link>
-          ))}
-        </div>
-      )}
 
-      {/* Preview */}
-      {hoveredAnime && (
-        <div
-          className="fixed z-50"
-          style={{
-            left: previewPosition.x,
-            top: previewPosition.y,
-            width: '300px',
-          }}
-        >
-          <AnimePreview
-            anime={hoveredAnime}
-            onClose={() => setHoveredAnime(null)}
-          />
-        </div>
-      )}
+            {/* Info Button */}
+            <button
+              className="absolute top-2 right-2 bg-black/70 text-white w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center hover:bg-black/80"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSelectedAnime(anime);
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSelectedAnime(anime);
+              }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          </div>
+        ))}
+      </div>
 
-      {/* Backdrop for mobile */}
-      {hoveredAnime && isMobile && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={() => setHoveredAnime(null)}
-        />
-      )}
-
+      {/* Pagination */}
       {pagination && (
-        <div className="mt-6">
+        <div className="mt-8">
           <Pagination
             currentPage={currentPage}
             totalPages={pagination.last_visible_page}
             onPageChange={setCurrentPage}
-            isLoading={loading}
+            isLoading={isLoading}
           />
         </div>
+      )}
+
+      {/* Preview Modal */}
+      {selectedAnime && (
+        <AnimePreview
+          isOpen={!!selectedAnime}
+          onClose={() => setSelectedAnime(null)}
+          anime={selectedAnime}
+        />
       )}
     </div>
   );
