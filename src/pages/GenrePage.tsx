@@ -141,7 +141,7 @@ export function GenrePage() {
     }
   }, [selectedGenres, currentPage]);
 
-  const renderAnimeSection = (title: string, animeData: Anime[], isLoading: boolean) => (
+  const renderAnimeSection = (title: string, animeData: Anime[], isLoading: boolean, sectionId: string) => (
     <div className="relative mb-12">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">{title}</h2>
@@ -153,8 +153,8 @@ export function GenrePage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {animeData.map((anime) => (
-            <div key={anime.mal_id} className="relative group">
+          {animeData.map((anime, index) => (
+            <div key={`${sectionId}-${anime.mal_id}-${index}`} className="relative group">
               <Link
                 to={`/anime/${anime.mal_id}`}
                 className="block"
@@ -232,7 +232,7 @@ export function GenrePage() {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
         {/* Top 5 Anime Section */}
-        {renderAnimeSection('Top 5 Anime', topAnime, topAnimeLoading)}
+        {renderAnimeSection('Top 5 Anime', topAnime, topAnimeLoading, 'top')}
 
         {/* Genre Selection */}
         <div className="mb-8">
@@ -289,10 +289,20 @@ export function GenrePage() {
                 </ul>
 
                 {/* OK Button */}
-                <div className="p-2 border-t sticky bottom-0 bg-white">
+                <div className="p-2 border-t sticky bottom-0 bg-white flex gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedGenres([]);
+                      setCurrentPage(1);
+                    }}
+                    className="w-1/3 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                    disabled={selectedGenres.length === 0}
+                  >
+                    Clear All
+                  </button>
                   <button
                     onClick={() => setIsDropdownOpen(false)}
-                    className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                    className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors"
                   >
                     OK
                   </button>
@@ -308,7 +318,8 @@ export function GenrePage() {
             {renderAnimeSection(
               `Anime for ${selectedGenres.map(genre => genre.name).join(', ')}`,
               animeList,
-              genreLoading
+              genreLoading,
+              'genre'
             )}
             
             {pagination && !genreLoading && (
