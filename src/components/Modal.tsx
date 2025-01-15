@@ -18,7 +18,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
       
       {/* Modal Content */}
       <div className="fixed inset-4 md:inset-8 flex items-center justify-center">
-        <div className="bg-white rounded-lg w-1/2 h-2/3 shadow-xl flex flex-col">
+        <div className="bg-white rounded-lg w-4/5 h-4/5 shadow-xl flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b">
             <h2 className="text-xl font-semibold">{title}</h2>
