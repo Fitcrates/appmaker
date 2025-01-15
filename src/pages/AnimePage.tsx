@@ -1,592 +1,396 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Star, ThumbsUp, ChevronLeft, ChevronRight, Play } from 'lucide-react';
-import { Anime } from '../types';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { fetchFromAPI, RequestPriority } from '../utils/api';
 import { LazyLoad } from '../components/LazyLoad';
-import { Modal } from '../components/Modal';
-import { useIntersectionObserver } from '../hooks/useIntersectionObserver';
+import { Star } from 'lucide-react';
+import { Pagination } from '../components/Pagination';
+import { AnimePreview } from '../components/AnimePreview';
 
-interface Character {
-  character: {
-    mal_id: number;
-    name: string;
-    images: {
-      jpg: {
-        image_url: string;
-      };
-    };
-  };
-  role: string;
-}
-
-interface Review {
+interface Genre {
   mal_id: number;
-  type: string;
-  reactions: {
-    nice: number;
-    love_it: number;
-    funny: number;
+  name: string;
+  count: number;
+}
+
+interface Anime {
+  mal_id: number;
+  title: string;
+  images: {
+    jpg: {
+      image_url: string;
+    };
   };
-  date: string;
-  review: string;
   score: number;
-  tags: string[];
-  user: {
-    username: string;
-    images: {
-      jpg: {
-        image_url: string;
-      };
-    };
+}
+
+interface GenreAnimeResponse {
+  data: Anime[];
+  pagination: {
+    has_next_page: boolean;
+    last_visible_page: number;
   };
 }
 
-interface AnimeCardProps {
-  anime: {
-    mal_id: number;
-    title: string;
-    images: {
-      jpg: {
-        image_url: string;
-      };
-    };
-  };
-}
-
-const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => (
-  <Link to={`/anime/${anime.mal_id}`} className="block">
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden transition-transform hover:scale-105">
-      <img
-        src={anime.images.jpg.image_url}
-        alt={anime.title}
-        className="w-full h-48 object-cover"
-      />
-      <div className="p-4">
-        <h3 className="font-medium text-sm line-clamp-2">{anime.title}</h3>
-      </div>
-    </div>
-  </Link>
-);
-
-export function AnimePage() {
-  const { id } = useParams<{ id: string }>();
-  const [anime, setAnime] = useState<Anime | null>(null);
-  const [characters, setCharacters] = useState<Character[]>([]);
-  const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function GenrePage() {
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [selectedGenres, setSelectedGenres] = useState<Genre[]>([]);
+  const [animeList, setAnimeList] = useState<Anime[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [genreLoading, setGenreLoading] = useState(true);
+  const [topAnimeLoading, setTopAnimeLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentReviewPage, setCurrentReviewPage] = useState(1);
-  const [selectedReview, setSelectedReview] = useState<Review | null>(null);
-  const [showTrailer, setShowTrailer] = useState(false);
+  const [isGenresLoading, setIsGenresLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [topAnime, setTopAnime] = useState<Anime[]>([]);
+  const [hoveredAnime, setHoveredAnime] = useState<any | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [touchTimer, setTouchTimer] = useState<NodeJS.Timeout | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [pagination, setPagination] = useState<{ has_next_page: boolean; last_visible_page: number } | null>(null);
+  const initialMount = useRef(true);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
-  const reviewsPerPage = 3;
-  const totalPages = Math.ceil(reviews.length / reviewsPerPage);
-  const currentReviews = reviews.slice(
-    (currentReviewPage - 1) * reviewsPerPage,
-    currentReviewPage * reviewsPerPage
+  const itemsPerPage = 25;
+
+  // Handle click outside dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Fetch top anime on mount
+  useEffect(() => {
+    const fetchTopAnime = async () => {
+      try {
+        setTopAnimeLoading(true);
+        const response = await fetchFromAPI<{ data: Anime[] }>('/top/anime', { limit: 5 }, RequestPriority.HIGH);
+        if (response?.data) {
+          setTopAnime(response.data);
+        }
+      } catch (err) {
+        console.error('Error fetching top anime:', err);
+      } finally {
+        setTopAnimeLoading(false);
+      }
+    };
+    fetchTopAnime();
+  }, []);
+
+  // Fetch genres
+  const fetchGenres = useCallback(async () => {
+    if (isGenresLoading || genres.length > 0) return;
+    
+    setIsGenresLoading(true);
+    try {
+      const response = await fetchFromAPI<{ data: Genre[] }>('/genres/anime', {}, RequestPriority.HIGH);
+      if (response?.data) {
+        setGenres(response.data);
+        // Select the first genre by default only on initial mount
+        if (response.data.length > 0 && initialMount.current) {
+          // setSelectedGenre(response.data[0]);
+          initialMount.current = false;
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching genres:', error);
+      setError('Failed to load genres');
+    } finally {
+      setIsGenresLoading(false);
+    }
+  }, [isGenresLoading, genres.length]);
+
+  // Fetch anime for selected genre
+  const fetchAnimeByGenre = useCallback(async () => {
+    if (!selectedGenres.length) return;
+
+    setGenreLoading(true);
+    setError(null);
+    try {
+      const genres = selectedGenres.map(genre => genre.mal_id).join(',');
+      const response = await fetchFromAPI<GenreAnimeResponse>(
+        `/anime?genres=${genres}&page=${currentPage}&limit=${itemsPerPage}&order_by=score&sort=desc`,
+        {},
+        RequestPriority.MEDIUM
+      );
+      setAnimeList(response.data);
+      setPagination(response.pagination);
+    } catch (err) {
+      console.error('Error fetching anime:', err);
+      setError('Failed to load anime');
+    } finally {
+      setGenreLoading(false);
+    }
+  }, [selectedGenres, currentPage]);
+
+  // Initial genres fetch
+  useEffect(() => {
+    let ignore = false;
+    
+    const init = async () => {
+      await fetchGenres();
+      if (!ignore && initialMount.current) {
+        initialMount.current = false;
+      }
+    };
+    
+    init();
+    return () => {
+      ignore = true;
+    };
+  }, [fetchGenres]);
+
+  // Fetch anime when genre or page changes
+  useEffect(() => {
+    let ignore = false;
+    
+    const fetchData = async () => {
+      await fetchAnimeByGenre();
+    };
+    
+    if (!ignore) {
+      fetchData();
+    }
+    
+    return () => {
+      ignore = true;
+    };
+  }, [fetchAnimeByGenre]);
+
+  const handleOverlayClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    setHoveredAnime(null);
+  };
+
+  const handlePreviewClick = (anime: any, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setHoveredAnime(anime);
+  };
+
+  const handleTouchStart = (anime: any, event: React.TouchEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setHoveredAnime(anime);
+  };
+
+  const handleTouchMove = (event: React.TouchEvent) => {
+    // Only prevent default if we have a preview open
+    if (hoveredAnime) {
+      event.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = () => {
+    // No need for complex touch handling since we're using fixed positioning
+  };
+
+  const renderAnimeSection = (title: string, animeData: Anime[], isLoading: boolean) => (
+    <div className="relative mb-12">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold">{title}</h2>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+        </div>
+      ) : (
+        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 ${hoveredAnime ? 'blur-sm' : ''}`}>
+          {animeData.map((anime) => (
+            <Link
+              key={anime.mal_id}
+              to={`/anime/${anime.mal_id}`}
+              className="relative group"
+            >
+              <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-200 group-hover:scale-105 group-hover:shadow-xl">
+                <div className="relative aspect-[3/4]">
+                  <LazyLoad>
+                    <img
+                      src={anime.images.jpg.image_url}
+                      alt={anime.title}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  </LazyLoad>
+                  {anime.score && (
+                    <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded-full text-sm flex items-center">
+                      <Star className="h-4 w-4 text-yellow-400 mr-1" />
+                      {anime.score}
+                    </div>
+                  )}
+                  <button
+                    className="absolute top-2 right-2 bg-black/70 text-white w-8 h-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+                    onClick={(e) => handlePreviewClick(anime, e)}
+                    onTouchStart={(e) => handleTouchStart(anime, e)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-medium text-sm line-clamp-2">{anime.title}</h3>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 
-  const [hasLoadedCharacters, setHasLoadedCharacters] = useState(false);
-  const [hasLoadedReviews, setHasLoadedReviews] = useState(false);
-  const [hasLoadedRecommendations, setHasLoadedRecommendations] = useState(false);
-
-  const [isLoadingCharacters, setIsLoadingCharacters] = useState(false);
-  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
-  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
-
-  const charactersRef = useRef<HTMLDivElement>(null);
-  const reviewsRef = useRef<HTMLDivElement>(null);
-  const recommendationsRef = useRef<HTMLDivElement>(null);
-
-  const { isIntersecting: isCharactersVisible } = useIntersectionObserver(charactersRef);
-  const { isIntersecting: isReviewsVisible } = useIntersectionObserver(reviewsRef);
-  const { isIntersecting: isRecommendationsVisible } = useIntersectionObserver(recommendationsRef);
-
-  useEffect(() => {
-    console.log('Visibility states:', {
-      characters: isCharactersVisible,
-      reviews: isReviewsVisible,
-      recommendations: isRecommendationsVisible
+  const toggleGenre = (genre: Genre) => {
+    setSelectedGenres(prev => {
+      const isSelected = prev.some(g => g.mal_id === genre.mal_id);
+      if (isSelected) {
+        return prev.filter(g => g.mal_id !== genre.mal_id);
+      } else {
+        return [...prev, genre];
+      }
     });
-  }, [isCharactersVisible, isReviewsVisible, isRecommendationsVisible]);
-
-  // Check if an element is in viewport
-  const isElementInViewport = (element: HTMLElement | null) => {
-    if (!element) return false;
-    const rect = element.getBoundingClientRect();
-    return (
-      rect.top >= -rect.height &&
-      rect.left >= -rect.width &&
-      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) + rect.height &&
-      rect.right <= (window.innerWidth || document.documentElement.clientWidth) + rect.width
-    );
+    setCurrentPage(1);
   };
 
-  // Load data functions with debounce
-  const loadCharacters = useCallback(async () => {
-    if (!id || hasLoadedCharacters || isLoadingCharacters) return;
-    
-    setIsLoadingCharacters(true);
-    try {
-      const data = await fetchFromAPI<any>(`/anime/${id}/characters`, {}, RequestPriority.MEDIUM);
-      if (data?.data) {
-        setCharacters(data.data);
-        setHasLoadedCharacters(true);
-      }
-    } catch (error) {
-      console.error('Error loading characters:', error);
-    } finally {
-      setIsLoadingCharacters(false);
+  // Filter genres based on search term
+  const filteredGenres = genres.filter(genre =>
+    genre.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleNavigate = (animeId: number) => {
+    if (!hoveredAnime) {
+      navigate(`/anime/${animeId}`);
     }
-  }, [id, hasLoadedCharacters, isLoadingCharacters]);
-
-  const loadReviews = useCallback(async () => {
-    if (!id || hasLoadedReviews || isLoadingReviews) return;
-    
-    setIsLoadingReviews(true);
-    try {
-      const data = await fetchFromAPI<any>(`/anime/${id}/reviews`, {}, RequestPriority.LOW);
-      if (data?.data) {
-        setReviews(data.data);
-        setHasLoadedReviews(true);
-      }
-    } catch (error) {
-      console.error('Error loading reviews:', error);
-    } finally {
-      setIsLoadingReviews(false);
-    }
-  }, [id, hasLoadedReviews, isLoadingReviews]);
-
-  const loadRecommendations = useCallback(async () => {
-    if (!id || hasLoadedRecommendations || isLoadingRecommendations) return;
-    
-    setIsLoadingRecommendations(true);
-    try {
-      const data = await fetchFromAPI<any>(`/anime/${id}/recommendations`, {}, RequestPriority.LOW);
-      if (data?.data) {
-        setRecommendations(data.data);
-        setHasLoadedRecommendations(true);
-      }
-    } catch (error) {
-      console.error('Error loading recommendations:', error);
-    } finally {
-      setIsLoadingRecommendations(false);
-    }
-  }, [id, hasLoadedRecommendations, isLoadingRecommendations]);
-
-  // Scroll to top when component mounts
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [id]);
-
-  // Reset state when ID changes
-  useEffect(() => {
-    setCharacters([]);
-    setReviews([]);
-    setRecommendations([]);
-    setHasLoadedCharacters(false);
-    setHasLoadedReviews(false);
-    setHasLoadedRecommendations(false);
-    setIsLoadingCharacters(false);
-    setIsLoadingReviews(false);
-    setIsLoadingRecommendations(false);
-    window.scrollTo(0, 0);
-  }, [id]);
-
-  // Load initial anime data
-  useEffect(() => {
-    let isSubscribed = true;
-
-    const fetchAnimeData = async () => {
-      if (!id) return;
-      
-      setIsLoading(true);
-      try {
-        const data = await fetchFromAPI<any>(`/anime/${id}/full`);
-        if (!isSubscribed) return;
-        
-        setAnime(data?.data);
-        
-        // Preload related anime
-        if (data?.data?.genres?.length > 0) {
-          const genreIds = data.data.genres.slice(0, 2).map((g: any) => g.mal_id).join(',');
-          fetchFromAPI(`/anime`, { genres: genreIds, limit: 5 }, RequestPriority.LOW);
-        }
-      } catch (error) {
-        console.error('Error fetching anime:', error);
-      } finally {
-        if (isSubscribed) {
-          setIsLoading(false);
-          // Check visibility after a short delay to ensure DOM is ready
-          setTimeout(() => {
-            if (!isSubscribed) return;
-            if (isElementInViewport(charactersRef.current)) loadCharacters();
-            if (isElementInViewport(reviewsRef.current)) loadReviews();
-            if (isElementInViewport(recommendationsRef.current)) loadRecommendations();
-          }, 100);
-        }
-      }
-    };
-
-    fetchAnimeData();
-    return () => { isSubscribed = false; };
-  }, [id]);
-
-  // Debounced scroll handler
-  const debouncedScroll = useMemo(() => {
-    let timeoutId: NodeJS.Timeout;
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        if (!charactersRef.current || !reviewsRef.current || !recommendationsRef.current) return;
-        
-        if (!hasLoadedCharacters && isElementInViewport(charactersRef.current)) loadCharacters();
-        if (!hasLoadedReviews && isElementInViewport(reviewsRef.current)) loadReviews();
-        if (!hasLoadedRecommendations && isElementInViewport(recommendationsRef.current)) loadRecommendations();
-      }, 100);
-    };
-  }, [loadCharacters, loadReviews, loadRecommendations, hasLoadedCharacters, hasLoadedReviews, hasLoadedRecommendations]);
-
-  // Load additional data on scroll
-  useEffect(() => {
-    window.addEventListener('scroll', debouncedScroll, { passive: true });
-    return () => window.removeEventListener('scroll', debouncedScroll);
-  }, [debouncedScroll]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4">
-          <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Search
-          </Link>
-          <div className="text-center py-8">Loading...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !anime) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4">
-          <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Search
-          </Link>
-          <div className="text-red-600 text-center py-8">
-            {error || 'Failed to load anime details'}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4 py-8">
-        <Link
-          to="/"
-          className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Search
-        </Link>
+      <div className="container mx-auto px-4">
+        {/* Top 5 Anime Section */}
+        {renderAnimeSection('Top 5 Anime', topAnime, topAnimeLoading)}
 
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="md:flex">
-            <div className="md:w-1/3">
-              <img
-                src={anime.images.jpg.large_image_url}
-                alt={anime.title}
-                className="w-full h-auto"
-              />
-            </div>
+        {/* Genre Selection */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold mb-6 text-center">Anime Genres</h1>
+          
+          {/* Dropdown Filter */}
+          <div className="flex items-center justify-center" ref={dropdownRef}>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="w-full md:w-96 bg-gray-100 border border-gray-300 rounded-lg px-4 py-2 text-left flex justify-between items-center"
+            >
+              <span>
+                {selectedGenres.length > 0
+                  ? `${selectedGenres.length} genre${selectedGenres.length > 1 ? 's' : ''} selected`
+                  : 'Select Genres'}
+              </span>
+              <span className="transform transition-transform duration-200">▼</span>
+            </button>
 
-            <div className="p-6 md:w-2/3">
-              <h1 className="text-3xl font-bold mb-4">{anime.title}</h1>
-
-              <div className="flex items-center mb-4">
-                <Star className="h-5 w-5 text-yellow-400 mr-1" />
-                <span className="font-semibold">{anime.score || 'N/A'}</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <h3 className="font-semibold">Status</h3>
-                  <p>{anime.status}</p>
+            {isDropdownOpen && (
+              <div className="absolute z-50 w-full md:w-96 mt-2 bg-white rounded-lg shadow-lg">
+                <div className="p-2 border-b sticky top-0 bg-white">
+                  <input
+                    type="search"
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Search genres..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    autoComplete="off"
+                  />
                 </div>
-                <div>
-                  <h3 className="font-semibold">Episodes</h3>
-                  <p>{anime.episodes || 'N/A'}</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Duration</h3>
-                  <p>{anime.duration}</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Rating</h3>
-                  <p>{anime.rating}</p>
-                </div>
-              </div>
 
-              <div className="mb-6">
-                <h3 className="font-semibold mb-2">Genres</h3>
-                <div className="flex flex-wrap gap-2">
-                  {anime.genres.map((genre) => (
-                    <span
-                      key={genre.mal_id}
-                      className="px-3 py-1 bg-gray-100 rounded-full text-sm"
-                    >
-                      {genre.name}
-                    </span>
+                <ul className="max-h-96 overflow-y-auto">
+                  {filteredGenres.map((genre) => (
+                    <li key={genre.mal_id}>
+                      <button
+                        onClick={() => toggleGenre(genre)}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <div className={`w-4 h-4 border rounded flex items-center justify-center ${
+                          selectedGenres.some(g => g.mal_id === genre.mal_id)
+                            ? 'bg-blue-500 border-blue-500'
+                            : 'border-gray-300'
+                        }`}>
+                          {selectedGenres.some(g => g.mal_id === genre.mal_id) && (
+                            <span className="text-white text-xs">✓</span>
+                          )}
+                        </div>
+                        {genre.name}
+                        <span className="text-sm text-gray-500 ml-auto">({genre.count})</span>
+                      </button>
+                    </li>
                   ))}
-                </div>
-              </div>
+                </ul>
 
-              <div>
-                <h3 className="font-semibold mb-2">Synopsis</h3>
-                <p className="text-gray-600 whitespace-pre-line">{anime.synopsis}</p>
-              </div>
-
-              {anime.trailer && anime.trailer.embed_url && (
-                <div className="mt-6">
-                  <h3 className="font-semibold mb-2">Trailer</h3>
+                {/* OK Button */}
+                <div className="p-2 border-t sticky bottom-0 bg-white">
                   <button
-                    onClick={() => setShowTrailer(true)}
-                    className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors"
                   >
-                    <Play className="h-4 w-4 mr-2" />
-                    Watch Trailer
+                    OK
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Characters Section */}
-        <div 
-          ref={charactersRef} 
-          className="section-characters mt-8"
-          style={{ minHeight: '100px' }}
-        >
-          <h2 className="text-2xl font-bold mb-4">Characters</h2>
-          {!hasLoadedCharacters ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {[...Array(12)].map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="bg-gray-200 rounded-lg h-40 mb-2"></div>
-                  <div className="bg-gray-200 h-4 rounded w-3/4"></div>
-                </div>
-              ))}
-            </div>
-          ) : isLoadingCharacters ? (
-            <p>Loading...</p>
-          ) : characters.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {characters.slice(0, 12).map((char) => (
-                <LazyLoad key={char.character.mal_id} delay={100}>
-                  <div className="text-center">
-                    <img
-                      src={char.character.images.jpg.image_url}
-                      alt={char.character.name}
-                      className="w-full h-40 object-cover rounded-lg mb-2"
-                    />
-                    <p className="text-sm font-medium">{char.character.name}</p>
-                  </div>
-                </LazyLoad>
-              ))}
-            </div>
-          ) : (
-            <p>No characters found.</p>
-          )}
-        </div>
-
-        {/* Reviews Section */}
-        <div 
-          ref={reviewsRef} 
-          className="section-reviews mt-8"
-          style={{ minHeight: '100px' }}
-        >
-          <h2 className="text-2xl font-bold mb-4">Reviews</h2>
-          {!hasLoadedReviews ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(3)].map((_, index) => (
-                <div key={index} className="animate-pulse bg-white rounded-lg shadow-md p-6">
-                  <div className="flex items-center mb-4">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full mr-4"></div>
-                    <div>
-                      <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-16"></div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-3 bg-gray-200 rounded"></div>
-                    <div className="h-3 bg-gray-200 rounded"></div>
-                    <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : isLoadingReviews ? (
-            <p>Loading...</p>
-          ) : reviews.length > 0 ? (
-            <>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex-1"></div>
-                {totalPages > 1 && (
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setCurrentReviewPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentReviewPage === 1}
-                      className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <span className="text-sm">
-                      Page {currentReviewPage} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setCurrentReviewPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentReviewPage === totalPages}
-                      className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {currentReviews.map((review) => (
-                  <div key={review.mal_id} className="bg-white rounded-lg shadow-md p-6 flex flex-col">
-                    <div className="flex items-center mb-4">
-                      <img
-                        src={review.user.images.jpg.image_url}
-                        alt={review.user.username}
-                        className="w-10 h-10 rounded-full mr-4"
-                      />
-                      <div>
-                        <h3 className="font-medium">{review.user.username}</h3>
-                        <div className="flex items-center">
-                          <Star className="h-4 w-4 text-black mr-1" />
-                          <span>{review.score}/10</span>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-gray-600 mb-4 line-clamp-3 flex-grow">{review.review}</p>
-                    <div className="flex items-center justify-between text-sm text-black p-8">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center">
-                          <ThumbsUp className="h-4 w-4 mr-1" />
-                          <span>{review.reactions.nice}</span>
-                        </div>
-                        <span>{new Date(review.date).toLocaleDateString()}</span>
-                      </div>
-                      <button
-                        onClick={() => setSelectedReview(review)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        Read More
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p>No reviews found.</p>
-          )}
-        </div>
-
-        {/* Recommendations Section */}
-        <div 
-          ref={recommendationsRef} 
-          className="section-recommendations mt-8"
-          style={{ minHeight: '100px' }}
-        >
-          <h2 className="text-2xl font-bold mb-4">Recommendations</h2>
-          {!hasLoadedRecommendations ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="bg-gray-200 rounded-lg h-48 mb-2"></div>
-                  <div className="bg-gray-200 h-4 rounded w-3/4"></div>
-                </div>
-              ))}
-            </div>
-          ) : isLoadingRecommendations ? (
-            <p>Loading...</p>
-          ) : recommendations.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recommendations.slice(0, 6).map((rec: any) => (
-                <LazyLoad key={rec.entry.mal_id} delay={200}>
-                  <AnimeCard anime={rec.entry} />
-                </LazyLoad>
-              ))}
-            </div>
-          ) : (
-            <p>No recommendations found.</p>
-          )}
-        </div>
-
-        {/* Review Modal */}
-        <Modal
-          isOpen={!!selectedReview}
-          onClose={() => setSelectedReview(null)}
-          title="Review"
-        >
-          {selectedReview && (
-            <div>
-              <div className="flex items-center mb-4">
-                <img
-                  src={selectedReview.user.images.jpg.image_url}
-                  alt={selectedReview.user.username}
-                  className="w-12 h-12 rounded-full mr-4"
+        {/* Selected Genre Content */}
+        {selectedGenres.length > 0 && (
+          <>
+            {renderAnimeSection(
+              `Anime for ${selectedGenres.map(genre => genre.name).join(', ')}`,
+              animeList,
+              genreLoading
+            )}
+            
+            {pagination && !genreLoading && (
+              <div className="mt-8 flex justify-center">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={pagination.last_visible_page}
+                  onPageChange={setCurrentPage}
+                  hasNextPage={pagination.has_next_page}
                 />
-                <div>
-                  <h3 className="font-medium text-lg">{selectedReview.user.username}</h3>
-                  <div className="flex items-center">
-                    <Star className="h-5 w-5 text-black mr-1" />
-                    <span className="text-lg">{selectedReview.score}/10</span>
-                  </div>
-                </div>
               </div>
-              <div className="prose max-w-none p-8">
-                <p className="whitespace-pre-line">{selectedReview.review}</p>
-              </div>
-              <div className="mt-4 flex items-center justify-between text-sm text-black p-8">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center">
-                    <ThumbsUp className="h-4 w-4 mr-1" />
-                    <span>{selectedReview.reactions.nice}</span>
-                  </div>
-                  <span>{new Date(selectedReview.date).toLocaleDateString()}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </Modal>
+            )}
+          </>
+        )}
 
-        {/* Trailer Modal */}
-        <Modal
-          isOpen={showTrailer}
-          onClose={() => setShowTrailer(false)}
-          title="Trailer"
-        >
-          {showTrailer && anime?.trailer?.embed_url && (
-            <div className="relative w-full" style={{ height: '70vh' }}>
-              <iframe
-                src={anime.trailer.embed_url}
-                frameBorder="0"
-                className="absolute top-0 left-0 w-full h-full"
-              ></iframe>
+        {/* Preview */}
+        {hoveredAnime && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+              onClick={handleOverlayClick}
+            />
+            <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] md:w-[400px] max-w-[400px] z-50">
+              <AnimePreview
+                anime={hoveredAnime}
+                onClose={() => setHoveredAnime(null)}
+                className="w-full"
+              />
             </div>
-          )}
-        </Modal>
+          </>
+        )}
       </div>
     </div>
   );
