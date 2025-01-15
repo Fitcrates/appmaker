@@ -1,71 +1,90 @@
 import React from 'react';
-import { Star, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface AnimePreviewProps {
+  isOpen: boolean;
+  onClose: () => void;
   anime: any;
-  className?: string;
-  onClose?: () => void;
 }
 
-export function AnimePreview({ anime, className = '', onClose }: AnimePreviewProps) {
-  return (
-    <div className={`bg-white rounded-lg shadow-xl overflow-hidden ${className}`}>
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        className="absolute top-2 right-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-      >
-        <X className="w-4 h-4 text-gray-600" />
-      </button>
+export const AnimePreview: React.FC<AnimePreviewProps> = ({ isOpen, onClose, anime }) => {
+  if (!isOpen || !anime) return null;
 
-      {/* Content */}
-      <div className="p-4">
-        <h3 className="font-semibold text-lg mb-2">{anime.title}</h3>
+  return (
+    <div className="fixed inset-0 z-[100] touch-none">
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black opacity-60 backdrop-blur" onClick={onClose} />
       
-        <div className="space-y-2">
-          {/* Rating and Episodes */}
-          <div className="flex items-center justify-between text-sm">
-            <div className="px-2 py-1 bg-orange-100 rounded-lg mr-4">
-              {anime.rating || 'No rating'}
-            </div>
-            <div>
-              {anime.episodes ? `${anime.episodes} episodes` : 'Unknown episodes'}
-            </div>
+      {/* Preview Content */}
+      <div className="fixed inset-0 sm:inset-4 md:inset-8 flex items-center justify-center p-4">
+        <div className="bg-white w-full max-w-2xl rounded-lg shadow-xl overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+            <h2 className="text-lg sm:text-xl font-semibold line-clamp-1">{anime.title}</h2>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
-          {/* Score */}
-          {anime.score && (
-            <div className="flex items-center space-x-1 text-sm">
-              <Star className="h-4 w-4 text-yellow-400" />
-              <span>{anime.score}</span>
-              {anime.scored_by && (
-                <span className="text-gray-500">
-                  ({(anime.scored_by / 1000).toFixed(1)}k votes)
-                </span>
-              )}
-            </div>
-          )}
+          {/* Content */}
+          <div className="overflow-auto">
+            <div className="sm:flex p-4 gap-4">
+              {/* Image */}
+              <div className="w-full sm:w-48 flex-shrink-0 mb-4 sm:mb-0">
+                <img
+                  src={anime.images?.jpg?.large_image_url || anime.images?.jpg?.image_url}
+                  alt={anime.title}
+                  className="w-full aspect-[3/4] object-cover rounded-lg"
+                />
+              </div>
 
-          {/* Synopsis */}
-          <p className="text-sm text-gray-600 line-clamp-4">
-            {anime.synopsis || 'No synopsis available'}
-          </p>
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Alternative Titles</h3>
+                    <p className="mt-1">{anime.title_english || 'N/A'}</p>
+                  </div>
 
-          {/* Genres */}
-          {anime.genres && anime.genres.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {anime.genres.map((genre: any) => (
-                <span
-                  key={genre.mal_id}
-                  className="text-xs px-2 py-1 bg-gray-100 rounded-full"
-                >
-                  {genre.name}
-                </span>
-              ))}
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Score</h3>
+                    <p className="mt-1">{anime.score || 'N/A'}</p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Status</h3>
+                    <p className="mt-1">{anime.status || 'N/A'}</p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Episodes</h3>
+                    <p className="mt-1">{anime.episodes || 'N/A'}</p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Synopsis</h3>
+                    <p className="mt-1 text-sm line-clamp-4">{anime.synopsis || 'No synopsis available.'}</p>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <Link
+                    to={`/anime/${anime.mal_id}`}
+                    onClick={onClose}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    View Details
+                  </Link>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
   );
-}
+};
