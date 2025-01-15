@@ -9,25 +9,31 @@ interface AnimePreviewProps {
 
 export function AnimePreview({ anime, className = '', onClose }: AnimePreviewProps) {
   return (
-    <div 
-      className={`bg-white rounded-lg overflow-hidden shadow-lg relative ${className}`}
-      onMouseLeave={onClose}
-    >
-      {/* Close button */}
-      <button
+   <>
+      {/* Backdrop */}
+      <div
+        className="backdrop"
         onClick={onClose}
-        className="absolute top-2 right-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-      >
-        <X className="w-4 h-4 text-gray-600" />
-      </button>
+      ></div>
 
-      <div className="p-4 pt-8">
-        <h3 className="font-semibold text-lg mb-2">{anime.title}</h3>
+      {/* Popup */}
+      <div className={`anime-preview animate-fade-in ${className}`}>
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+        >
+          <X className="w-4 h-4 text-gray-600" />
+        </button>
+
+        {/* Content */}
+        <div className="p-4 pt-8">
+          <h3 className="font-semibold text-lg mb-2">{anime.title}</h3>
         
         <div className="space-y-2">
           {/* Rating and Episodes */}
           <div className="flex items-center justify-between text-sm">
-            <div className="px-2 py-1 bg-gray-100 rounded">
+            <div className="px-2 py-1 bg-orange-100 rounded-lg mr-4">
               {anime.rating || 'No rating'}
             </div>
             <div>
@@ -62,7 +68,7 @@ export function AnimePreview({ anime, className = '', onClose }: AnimePreviewPro
               {anime.genres.map((genre: any) => (
                 <span 
                   key={genre.mal_id}
-                  className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs"
+                  className="px-2 py-1 bg-indigo-200 text-black rounded-full text-xs"
                 >
                   {genre.name}
                 </span>
@@ -73,7 +79,7 @@ export function AnimePreview({ anime, className = '', onClose }: AnimePreviewPro
           {/* Synopsis */}
           {anime.synopsis && (
             <div className="mt-3">
-              <p className="text-sm text-gray-600 line-clamp-4">
+              <p className="text-sm text-black line-clamp-4">
                 {anime.synopsis}
               </p>
             </div>
@@ -81,12 +87,13 @@ export function AnimePreview({ anime, className = '', onClose }: AnimePreviewPro
 
           {/* Airing Information */}
           {anime.aired && (
-            <div className="text-xs text-gray-500 mt-2">
+            <div className="text-xs text-gray-700 mt-2">
               {anime.aired.string}
             </div>
           )}
         </div>
       </div>
     </div>
+    </>
   );
 }
