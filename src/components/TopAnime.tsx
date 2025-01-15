@@ -74,17 +74,16 @@ export function TopAnime() {
       const screenHeight = window.innerHeight;
       const previewWidth = 300;
       const previewHeight = 400;
-      
+  
+      // Ensure the preview is centered if there's enough space
       let x = rect.right + 10;
-      if (x + previewWidth + 20 > screenWidth) {
-        x = rect.left - previewWidth - 10;
+      if (x + previewWidth > screenWidth) {
+        x = Math.max(10, rect.left - previewWidth - 10); // Ensure within bounds
       }
-      
-      let y = rect.top;
-      if (y + previewHeight > screenHeight - 10) {
-        y = screenHeight - previewHeight - 10;
-      }
-      
+  
+      let y = Math.min(rect.top, screenHeight - previewHeight - 10); // Keep it within the viewport vertically
+      if (y < 10) y = 10; // Prevent it from going above the top of the screen
+  
       setPreviewPosition({ x, y });
       setHoveredAnime(anime);
     }
@@ -159,36 +158,28 @@ export function TopAnime() {
     event.preventDefault();
     event.stopPropagation();
     setHoveredAnime(anime);
-    
+  
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
-    const previewWidth = 300;
+  
+    const previewWidth = 300; // Default preview width
     const previewHeight = 400;
-    
-    let x = rect.right + 10;
-    if (x + previewWidth + 20 > screenWidth) {
-      x = rect.left - previewWidth - 10;
-    }
-    
-    let y = rect.top;
-    if (y + previewHeight > screenHeight - 10) {
-      y = screenHeight - previewHeight - 10;
-    }
-    
+  
+    const calculatedWidth = Math.min(screenWidth - 20, previewWidth);
+    const calculatedHeight = Math.min(screenHeight - 20, previewHeight);
+  
+    const x = Math.max(
+      10,
+      Math.min(screenWidth - calculatedWidth - 10, rect.left + rect.width / 2 - calculatedWidth / 2)
+    );
+    const y = Math.max(
+      10,
+      Math.min(screenHeight - calculatedHeight - 10, rect.bottom + 10)
+    );
+  
     setPreviewPosition({ x, y });
   };
-
-  const handleClick = (animeId: number, event: React.MouseEvent) => {
-    event.preventDefault();
-    if (!hoveredAnime) {
-      navigate(`/anime/${animeId}`);
-    }
-  };
-
-  if (error) {
-    return <div className="text-red-600 text-center py-8">{error}</div>;
-  }
 
   return (
     <div id="top-anime" className="relative mb-12">
