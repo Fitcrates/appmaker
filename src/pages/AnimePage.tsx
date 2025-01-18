@@ -3,9 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Star, ThumbsUp, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { Anime } from '../types';
 import { fetchFromAPI, RequestPriority } from '../utils/api';
-import { LazyLoad } from '../components/LazyLoad';
 import { Modal } from '../components/Modal';
 import { useIntersectionObserver } from '../hooks/useIntersectionObserver';
+import { VideoPlayer } from '../components/VideoPlayer';
 
 interface Character {
   character: {
@@ -80,6 +80,8 @@ export function AnimePage() {
   const [currentReviewPage, setCurrentReviewPage] = useState(1);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const reviewsPerPage = 3;
   const totalPages = Math.ceil(reviews.length / reviewsPerPage);
@@ -255,6 +257,13 @@ export function AnimePage() {
     return () => window.removeEventListener('scroll', debouncedScroll);
   }, [debouncedScroll]);
 
+  const handleTrailerClick = () => {
+    if (anime?.trailer?.embed_url) {
+      console.log('Opening trailer with URL:', anime.trailer.embed_url);
+      setShowTrailer(true);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
@@ -356,11 +365,31 @@ export function AnimePage() {
                 <div className="mt-6">
                   <h3 className="font-semibold mb-2">Trailer</h3>
                   <button
-                    onClick={() => setShowTrailer(true)}
-                    className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    onClick={handleTrailerClick}
+                    className="group relative block w-full max-w-sm overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
                   >
-                    <Play className="h-4 w-4 mr-2" />
-                    Watch Trailer
+                    <div className="relative aspect-video bg-black">
+                      {anime.trailer.images?.maximum_image_url ? (
+                        <img
+                          src={anime.trailer.images.maximum_image_url}
+                          alt={`${anime.title} Trailer`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+                          <Play className="h-12 w-12 text-gray-600" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                        <div className="bg-red-600 rounded-full p-4 transform group-hover:scale-110 transition-transform">
+                          <Play className="h-8 w-8 text-white" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+                      <p className="text-white text-sm font-medium">Watch Trailer</p>
+                    </div>
                   </button>
                 </div>
               )}
@@ -389,16 +418,14 @@ export function AnimePage() {
           ) : characters.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {characters.slice(0, 12).map((char) => (
-                <LazyLoad key={char.character.mal_id} delay={100}>
-                  <div className="text-center">
-                    <img
-                      src={char.character.images.jpg.image_url}
-                      alt={char.character.name}
-                      className="w-full h-40 object-cover rounded-lg mb-2"
-                    />
-                    <p className="text-sm font-medium">{char.character.name}</p>
-                  </div>
-                </LazyLoad>
+                <div key={char.character.mal_id} className="text-center">
+                  <img
+                    src={char.character.images.jpg.image_url}
+                    alt={char.character.name}
+                    className="w-full h-40 object-cover rounded-lg mb-2"
+                  />
+                  <p className="text-sm font-medium">{char.character.name}</p>
+                </div>
               ))}
             </div>
           ) : (
@@ -523,53 +550,13 @@ export function AnimePage() {
           ) : recommendations.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {recommendations.slice(0, 6).map((rec: any) => (
-                <LazyLoad key={rec.entry.mal_id} delay={200}>
-                  <AnimeCard anime={rec.entry} />
-                </LazyLoad>
+                <AnimeCard key={rec.entry.mal_id} anime={rec.entry} />
               ))}
             </div>
           ) : (
             <p>No recommendations found.</p>
           )}
         </div>
-
-        {/* Review Modal */}
-        <Modal
-          isOpen={!!selectedReview}
-          onClose={() => setSelectedReview(null)}
-          title="Review"
-        >
-          {selectedReview && (
-            <div>
-              <div className="flex items-center mb-4">
-                <img
-                  src={selectedReview.user.images.jpg.image_url}
-                  alt={selectedReview.user.username}
-                  className="w-12 h-12 rounded-full mr-4"
-                />
-                <div>
-                  <h3 className="font-medium text-lg">{selectedReview.user.username}</h3>
-                  <div className="flex items-center">
-                    <Star className="h-5 w-5 text-black mr-1" />
-                    <span className="text-lg">{selectedReview.score}/10</span>
-                  </div>
-                </div>
-              </div>
-              <div className="prose max-w-none p-8">
-                <p className="whitespace-pre-line">{selectedReview.review}</p>
-              </div>
-              <div className="mt-4 flex items-center justify-between text-sm text-black p-8">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center">
-                    <ThumbsUp className="h-4 w-4 mr-1" />
-                    <span>{selectedReview.reactions.nice}</span>
-                  </div>
-                  <span>{new Date(selectedReview.date).toLocaleDateString()}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </Modal>
 
         {/* Trailer Modal */}
         <Modal
@@ -582,8 +569,53 @@ export function AnimePage() {
               <iframe
                 src={anime.trailer.embed_url}
                 frameBorder="0"
+                allowFullScreen
                 className="absolute top-0 left-0 w-full h-full"
+                title={`${anime.title} Trailer`}
               ></iframe>
+            </div>
+          )}
+        </Modal>
+
+        {/* Review Modal */}
+        <Modal
+          isOpen={!!selectedReview}
+          onClose={() => setSelectedReview(null)}
+          title="Review"
+        >
+          {selectedReview && (
+            <div className="p-4">
+              <div className="flex items-center mb-4">
+                <img
+                  src={selectedReview.user.images.jpg.image_url}
+                  alt={selectedReview.user.username}
+                  className="w-12 h-12 rounded-full mr-4"
+                  loading="lazy"
+                />
+                <div>
+                  <h3 className="font-medium text-lg">{selectedReview.user.username}</h3>
+                  <div className="flex items-center">
+                    <Star className="h-5 w-5 text-yellow-500 mr-1" />
+                    <span className="text-lg font-medium">{selectedReview.score}/10</span>
+                  </div>
+                </div>
+              </div>
+              <div className="prose max-w-none">
+                <p className="whitespace-pre-line text-gray-700 leading-relaxed">
+                  {selectedReview.review}
+                </p>
+              </div>
+              <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center">
+                    <ThumbsUp className="h-4 w-4 mr-1" />
+                    <span>{selectedReview.reactions.nice}</span>
+                  </div>
+                  <time dateTime={selectedReview.date}>
+                    {new Date(selectedReview.date).toLocaleDateString()}
+                  </time>
+                </div>
+              </div>
             </div>
           )}
         </Modal>
