@@ -31,13 +31,15 @@ export function Pagination({ currentPage, totalPages, onPageChange, isLoading }:
       </button>
 
       {/* First Page Button */}
-      <button
-        onClick={() => onPageChange(1)}
-        disabled={currentPage === 1 || isLoading}
-        className="px-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50"
-      >
-        1
-      </button>
+      {currentPage !== 1 && (
+        <button
+          onClick={() => onPageChange(1)}
+          disabled={isLoading}
+          className="px-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50"
+        >
+          1
+        </button>
+      )}
 
       {/* Current Page Button */}
       <span
@@ -47,13 +49,15 @@ export function Pagination({ currentPage, totalPages, onPageChange, isLoading }:
       </span>
 
       {/* Last Page Button */}
-      <button
-        onClick={() => onPageChange(totalPages)}
-        disabled={currentPage === totalPages || isLoading}
-        className="px-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50"
-      >
-        {totalPages}
-      </button>
+      {currentPage !== totalPages && (
+        <button
+          onClick={() => onPageChange(totalPages)}
+          disabled={isLoading}
+          className="px-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50"
+        >
+          {totalPages}
+        </button>
+      )}
 
       {/* Next Button */}
       <button
