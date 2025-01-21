@@ -7,7 +7,7 @@ import { Pagination } from '../components/Pagination';
 import { AnimePreview } from '../components/AnimePreview';
 import { AnimeCard } from '../components/AnimeCard';
 import { useWatchlist } from '../hooks/useWatchlist';
-import { Info, Bookmark } from 'lucide-react';
+import { Info, Bookmark, ChevronDown, X } from 'lucide-react';
 import { Tooltip } from '../components/ui/Tooltip';
 
 interface Genre {
@@ -256,79 +256,90 @@ function GenrePage() {
         <div className="mb-8">
           <h1 className="text-2xl text-black font-bold mb-6 text-center">Anime Genres</h1>
           
-          {/* Dropdown Filter */}
-          <div className="flex items-center justify-center" ref={dropdownRef}>
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full md:w-96 bg-gray-100 border border-gray-300 rounded-lg px-4 py-2 text-left text-black flex justify-between items-center"
-            >
-              <span>
-                {selectedGenres.length > 0
-                  ? `${selectedGenres.length} genre${selectedGenres.length > 1 ? 's' : ''} selected`
-                  : 'Select Genres'}
-              </span>
-              <span className="transform transition-transform duration-200">▼</span>
-            </button>
+          {/* Genre Filter Dropdown */}
+        <div className="flex items-center justify-center" ref={dropdownRef}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg shadow-sm hover:bg-gray-50"
+          >
+            Filter by Genre
+            <ChevronDown className="w-4 h-4" />
+          </button>
 
-            {isDropdownOpen && (
-              <div className="absolute z-50 w-full md:w-96 mt-2 bg-white rounded-lg shadow-lg">
-                <div className="p-2 border-b sticky top-0 bg-white">
-                  <input
-                    type="search"
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Search genres..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    autoComplete="off"
-                  />
-                </div>
-
-                <ul className="max-h-96 overflow-y-auto">
-                  {filteredGenres.map((genre) => (
-                    <li key={genre.mal_id}>
-                      <button
-                        onClick={() => toggleGenre(genre)}
-                        className="w-full text-left text-black px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
-                      >
-                        <div className={`w-4 h-4 border rounded flex items-center justify-center ${
-                          selectedGenres.some(g => g.mal_id === genre.mal_id)
-                            ? 'bg-blue-500 border-blue-500'
-                            : 'border-gray-300'
-                        }`}>
-                          {selectedGenres.some(g => g.mal_id === genre.mal_id) && (
-                            <span className="text-black text-xs">✓</span>
-                          )}
-                        </div>
-                        {genre.name}
-                        <span className="text-sm text-black ml-auto">({genre.count})</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* OK Button */}
-                <div className="p-2 border-t sticky bottom-0 bg-white flex gap-2">
-                  <button
-                    onClick={() => {
-                      setSelectedGenres([]);
-                      setCurrentPage(1);
-                    }}
-                    className="w-1/3 bg-gray-500 text-black py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                    disabled={selectedGenres.length === 0}
-                  >
-                    Clear All
-                  </button>
-                  <button
-                    onClick={() => setIsDropdownOpen(false)}
-                    className="flex-1 bg-blue-500 text-black py-2 rounded-lg hover:bg-blue-600 transition-colors"
-                  >
-                    OK
-                  </button>
-                </div>
+          {isDropdownOpen && (
+            <div className="absolute mt-2 w-64 bg-white border rounded-lg shadow-lg z-50" ref={dropdownRef}>
+              <div className="p-2 border-b">
+                <input
+                  type="text"
+                  placeholder="Search genres..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md"
+                />
               </div>
-            )}
-          </div>
+
+              <div className="max-h-64 overflow-y-auto">
+                {selectedGenres.length > 0 && (
+                  <div className="px-2 py-2 border-b flex flex-wrap gap-1">
+                    {selectedGenres.map((genre) => (
+                      <span
+                        key={genre.mal_id}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                      >
+                        {genre.name}
+                        <button
+                          onClick={() => setSelectedGenres(selectedGenres.filter(g => g.mal_id !== genre.mal_id))}
+                          className="hover:text-blue-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {filteredGenres.map((genre) => (
+                  <div
+                    key={genre.mal_id}
+                    className="px-4 py-2 hover:bg-gray-100"
+                  >
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedGenres.some(g => g.mal_id === genre.mal_id)}
+                        onChange={() => {
+                          if (selectedGenres.some(g => g.mal_id === genre.mal_id)) {
+                            setSelectedGenres(selectedGenres.filter(g => g.mal_id !== genre.mal_id));
+                          } else {
+                            setSelectedGenres([...selectedGenres, genre]);
+                          }
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm">{genre.name}</span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-2 border-t flex justify-between">
+                <button
+                  onClick={() => setSelectedGenres([])}
+                  className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                >
+                  Clear All
+                </button>
+                <button
+                  onClick={() => setIsDropdownOpen(false)}
+                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+      </div>
 
         {/* Selected Genre Content */}
         {selectedGenres.length > 0 && (
