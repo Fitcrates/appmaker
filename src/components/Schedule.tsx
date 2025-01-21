@@ -97,7 +97,7 @@ export function Schedule() {
           No anime scheduled for {activeDay}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
           {schedule.map((anime) => (
             <div key={anime.mal_id} className="relative group">
               <Link
