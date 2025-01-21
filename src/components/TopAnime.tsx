@@ -67,13 +67,15 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
             <div className="absolute top-2 right-2 group-hover:opacity-100 transition-opacity">
               <div className="flex gap-2">
                 <Tooltip content="View Details">
-                  <Link
-                    to={`/anime/${anime.mal_id}`}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedAnime(anime);
+                    }}
                     className="p-2 bg-black rounded-full shadow-md"
-                    onClick={(e) => e.stopPropagation()}
                   >
                     <Info className="w-4 h-4 text-white" />
-                  </Link>
+                  </button>
                 </Tooltip>
                 <Tooltip content={isInWatchlist[anime.mal_id] ? "Remove from Watchlist" : "Add to Watchlist"}>
                   <button
