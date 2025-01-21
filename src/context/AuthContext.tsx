@@ -118,9 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent',
-            hd: window.location.hostname, // Add domain restriction
-            client_name: 'AnimeSearch', // Add custom client name
+            prompt: 'select_account',
+            client_name: 'AnimeSearch',
           },
           redirectTo: `${window.location.origin}/auth/callback`,
         }
