@@ -58,25 +58,25 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
                   alt={anime.title}
                   className="w-full h-64 object-cover"
                 />
+                <div className="absolute top-2 left-2 bg-black bg-opacity-75 rounded-full px-2 py-1 flex items-center">
+                  <Star className="w-4 h-4 text-yellow-400" />
+                  <span className="ml-1 text-sm text-white">{anime.score}</span>
+                </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-gray-800 line-clamp-2">{anime.title}</h3>
-                  <div className="flex items-center mt-2">
-                    <Star className="w-4 h-4 text-yellow-400" />
-                    <span className="ml-1 text-sm text-gray-600">{anime.score}</span>
-                  </div>
                 </div>
               </div>
             </LazyLoad>
 
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-2 right-2 group-hover:opacity-100 transition-opacity">
               <div className="flex gap-2">
                 <Tooltip content="View Details">
                   <Link
                     to={`/anime/${anime.mal_id}`}
-                    className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100"
+                    className="p-2 bg-black rounded-full shadow-md"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Info className="w-4 h-4 text-gray-600" />
+                    <Info className="w-4 h-4 text-white" />
                   </Link>
                 </Tooltip>
                 <Tooltip content={isInWatchlist[anime.mal_id] ? "Remove from Watchlist" : "Add to Watchlist"}>
@@ -87,11 +87,11 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
                         ? removeFromWatchlist(anime.mal_id)
                         : addToWatchlist(anime);
                     }}
-                    className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100"
+                    className="p-2 bg-black rounded-full shadow-md"
                   >
                     <Bookmark
                       className={`w-4 h-4 ${
-                        isInWatchlist[anime.mal_id] ? "text-blue-500 fill-current" : "text-gray-600"
+                        isInWatchlist[anime.mal_id] ? "text-blue-500 fill-current" : "text-white"
                       }`}
                     />
                   </button>
