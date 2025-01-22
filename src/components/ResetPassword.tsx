@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export function ResetPassword() {
@@ -10,15 +10,18 @@ export function ResetPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { supabase } = useAuth();
 
   useEffect(() => {
-    // Check if we have the access_token in the URL
+    // Check for either the hash token or the code parameter
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    if (!hashParams.get('access_token')) {
+    const code = searchParams.get('code');
+    
+    if (!hashParams.get('access_token') && !code) {
       setError('Invalid or expired reset link. Please request a new password reset.');
     }
-  }, []);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +49,6 @@ export function ResetPassword() {
       setMessage('Password has been reset successfully! Redirecting to login...');
       setTimeout(() => {
         navigate('/');
-        // We'll let the Navbar handle showing the login modal
       }, 2000);
     } catch (err: any) {
       console.error('Reset password error:', err);
