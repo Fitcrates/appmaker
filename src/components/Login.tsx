@@ -5,8 +5,10 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
+  const [isResetting, setIsResetting] = useState(false);
+  const { signIn, resetPassword } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +24,25 @@ export function Login() {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+    try {
+      setIsResetting(true);
+      setError('');
+      await resetPassword(email);
+      setMessage('Password reset email sent. Please check your inbox.');
+    } catch (err) {
+      setError('Failed to send password reset email');
+      console.error(err);
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -34,6 +55,11 @@ export function Login() {
           {error && (
             <div className="rounded-md bg-red-50 p-4">
               <div className="text-sm text-red-700">{error}</div>
+            </div>
+          )}
+          {message && (
+            <div className="rounded-md bg-green-50 p-4">
+              <div className="text-sm text-green-700">{message}</div>
             </div>
           )}
           <div className="rounded-md shadow-sm -space-y-px">
@@ -68,6 +94,19 @@ export function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                className="font-medium text-blue-600 hover:text-blue-500"
+                disabled={isResetting}
+              >
+                {isResetting ? 'Sending...' : 'Forgot your password?'}
+              </button>
             </div>
           </div>
 
