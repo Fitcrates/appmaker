@@ -110,8 +110,9 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
     // Check if we're still in cooldown period
     const lastRequest = parseInt(localStorage.getItem('lastPasswordResetRequest') || '0');
-    const timeSinceLastRequest = Date.now() - lastRequest;
     const cooldownPeriod = 60 * 1000; // 60 seconds
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequest;
 
     if (lastRequest && timeSinceLastRequest < cooldownPeriod) {
       const secondsLeft = Math.ceil((cooldownPeriod - timeSinceLastRequest) / 1000);
@@ -126,19 +127,16 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       setSuccessMessage('Password reset email sent. Please check your inbox.');
       
       // Store the timestamp of the last reset request
-      localStorage.setItem('lastPasswordResetRequest', Date.now().toString());
+      localStorage.setItem('lastPasswordResetRequest', now.toString());
       
     } catch (err: any) {
       console.error('Reset password error:', err);
       
       // Check if it's a rate limit error
       if (err.message?.toLowerCase().includes('rate limit')) {
-        const minutesLeft = Math.ceil((60 * 1000 - timeSinceLastRequest) / (60 * 1000));
-        setError(
-          `Too many reset attempts. Please wait ${minutesLeft} ${
-            minutesLeft === 1 ? 'minute' : 'minutes'
-          } before trying again.`
-        );
+        setError('Too many reset attempts. Please wait 60 seconds before trying again.');
+        // Set the last request time to now to enforce the cooldown
+        localStorage.setItem('lastPasswordResetRequest', now.toString());
       } else {
         setError(err.message || 'Failed to send reset password email');
       }
