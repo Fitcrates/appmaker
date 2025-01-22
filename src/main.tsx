@@ -8,6 +8,8 @@ import AnimePage from './pages/AnimePage'
 import AuthCallback from './pages/AuthCallback'
 import GenrePage from './pages/GenrePage'
 import { AnimeToWatch } from './components/AnimeToWatch'
+import { Login } from './components/Login'
+import { ResetPassword } from './components/ResetPassword'
 
 const router = createBrowserRouter([
   {
@@ -37,6 +39,14 @@ const router = createBrowserRouter([
       {
         path: '/auth/callback',
         element: <AuthCallback />,
+      },
+      {
+        path: '/login',
+        element: <Login />,
+      },
+      {
+        path: '/reset-password',
+        element: <ResetPassword />,
       },
     ],
   },
