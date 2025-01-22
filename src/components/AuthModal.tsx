@@ -16,7 +16,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  const { signIn, signUp, signInWithGoogle, resendVerificationEmail } = useAuth();
+  const [isResetting, setIsResetting] = useState(false);
+  const { signIn, signUp, signInWithGoogle, resendVerificationEmail, resetPassword } = useAuth();
 
   if (!isOpen) return null;
 
@@ -101,6 +102,25 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+
+    try {
+      setIsResetting(true);
+      setError('');
+      await resetPassword(email);
+      setSuccessMessage('Password reset email sent. Please check your inbox.');
+    } catch (err: any) {
+      console.error('Reset password error:', err);
+      setError(err.message || 'Failed to send reset password email');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] touch-none">
       {/* Backdrop */}
@@ -122,17 +142,17 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 text-red-700 rounded text-sm">
-              {error}
-              {error.toLowerCase().includes('verification') && (
-                <button
-                  onClick={handleResendVerification}
-                  disabled={resendLoading}
-                  className="ml-2 text-blue-600 hover:text-blue-800 underline text-sm"
-                >
-                  {resendLoading ? 'Sending...' : 'Resend verification email'}
-                </button>
-              )}
-            </div>
+            {error}
+            {error.toLowerCase().includes('verification') && (
+              <button
+                onClick={handleResendVerification}
+                disabled={resendLoading}
+                className="ml-2 text-blue-600 hover:text-blue-800 underline text-sm"
+              >
+                {resendLoading ? 'Sending...' : 'Resend verification email'}
+              </button>
+            )}
+          </div>
           )}
 
           {successMessage && (
@@ -140,7 +160,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               {successMessage}
             </div>
           )}
-<div className="space-y-4">
+          <div className="space-y-4">
             <button
               onClick={handleGoogleSignIn}
               className="w-full flex items-center justify-center gap-2 bg-white text-gray-700 border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors"
@@ -206,6 +226,18 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 placeholder={isLogin ? "Your password" : "Create a password (min. 6 characters)"}
               />
             </div>
+            {isLogin && (
+              <div className="flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={handleResetPassword}
+                  disabled={isResetting}
+                  className="text-sm text-blue-600 hover:text-blue-500"
+                >
+                  {isResetting ? 'Sending...' : 'Forgot your password?'}
+                </button>
+              </div>
+            )}
             <button
               type="submit"
               disabled={isLoading}
