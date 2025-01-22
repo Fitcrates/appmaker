@@ -171,10 +171,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${import.meta.env.VITE_APP_URL}/reset-password`,
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     
     if (error) {
+      if (error.message.toLowerCase().includes('rate limit')) {
+        throw new Error('Please wait a moment before requesting another password reset.');
+      }
       throw error;
     }
   };
