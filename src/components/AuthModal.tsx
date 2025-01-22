@@ -108,14 +108,40 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       return;
     }
 
+    // Check if we're still in cooldown period
+    const lastRequest = parseInt(localStorage.getItem('lastPasswordResetRequest') || '0');
+    const timeSinceLastRequest = Date.now() - lastRequest;
+    const cooldownPeriod = 60 * 1000; // 60 seconds
+
+    if (lastRequest && timeSinceLastRequest < cooldownPeriod) {
+      const secondsLeft = Math.ceil((cooldownPeriod - timeSinceLastRequest) / 1000);
+      setError(`Please wait ${secondsLeft} seconds before requesting another reset email.`);
+      return;
+    }
+
     try {
       setIsResetting(true);
       setError('');
       await resetPassword(email);
       setSuccessMessage('Password reset email sent. Please check your inbox.');
+      
+      // Store the timestamp of the last reset request
+      localStorage.setItem('lastPasswordResetRequest', Date.now().toString());
+      
     } catch (err: any) {
       console.error('Reset password error:', err);
-      setError(err.message || 'Failed to send reset password email');
+      
+      // Check if it's a rate limit error
+      if (err.message?.toLowerCase().includes('rate limit')) {
+        const minutesLeft = Math.ceil((60 * 1000 - timeSinceLastRequest) / (60 * 1000));
+        setError(
+          `Too many reset attempts. Please wait ${minutesLeft} ${
+            minutesLeft === 1 ? 'minute' : 'minutes'
+          } before trying again.`
+        );
+      } else {
+        setError(err.message || 'Failed to send reset password email');
+      }
     } finally {
       setIsResetting(false);
     }
