@@ -45,27 +45,49 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccessMessage('');
-    
-    if (!validateForm()) {
+  const handleSignUp = async () => {
+    if (!email || !password || !name) {
+      setError('Please fill in all fields');
       return;
     }
 
-    setIsLoading(true);
     try {
-      if (!isLogin) {
-        await signUp(email.trim(), password, name.trim());
-        onClose(); // Close modal after successful signup
-      } else {
-        await signIn(email.trim(), password);
-        onClose();
-      }
+      setIsLoading(true);
+      setError('');
+      await signUp(email, password, name);
+      setSuccessMessage('Registration successful! Please check your email to verify your account.');
+      setIsLogin(true); // Switch to login mode after successful registration
     } catch (err: any) {
-      console.error('Auth error:', err);
-      setError(err.message || 'An error occurred during authentication');
+      console.error('Signup error:', err);
+      if (err.message.includes('already exists')) {
+        setError('This email is already registered. Please try logging in or reset your password.');
+        setIsLogin(true); // Switch to login mode if email exists
+      } else {
+        setError(err.message || 'Failed to sign up. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+      await signIn(email, password);
+      onClose(); // Close modal after successful login
+    } catch (err: any) {
+      console.error('Login error:', err);
+      if (err.message.includes('Invalid login credentials')) {
+        setError('Invalid email or password. Please try again or reset your password.');
+      } else {
+        setError(err.message || 'Failed to log in. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -208,7 +230,14 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </div>
             </div>
           </div>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (isLogin) {
+              handleLogin();
+            } else {
+              handleSignUp();
+            }
+          }} className="space-y-4">
             {!isLogin && (
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
