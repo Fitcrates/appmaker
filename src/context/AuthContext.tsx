@@ -10,7 +10,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<{ success: boolean }>;
   loading: boolean;
 }
 
@@ -177,14 +177,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    
-    if (error) {
-      if (error.message.toLowerCase().includes('rate limit')) {
-        throw new Error('Please wait a moment before requesting another password reset.');
+    const RETRY_DELAY = 60000; // 60 seconds
+    const lastAttemptTime = parseInt(localStorage.getItem('lastPasswordResetAttempt') || '0');
+    const now = Date.now();
+
+    if (lastAttemptTime && (now - lastAttemptTime) < RETRY_DELAY) {
+      const waitSeconds = Math.ceil((RETRY_DELAY - (now - lastAttemptTime)) / 1000);
+      throw new Error(`Please wait ${waitSeconds} seconds before requesting another reset email.`);
+    }
+
+    try {
+      // First check if the email exists
+      const { data: users } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', email)
+        .limit(1);
+
+      if (!users || users.length === 0) {
+        throw new Error('No account found with this email address.');
       }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        if (error.message.toLowerCase().includes('rate limit')) {
+          localStorage.setItem('lastPasswordResetAttempt', now.toString());
+          throw new Error('Too many reset attempts. Please try again in 60 seconds.');
+        }
+        throw error;
+      }
+
+      // Store the attempt time only on success
+      localStorage.setItem('lastPasswordResetAttempt', now.toString());
+      return { success: true };
+    } catch (error: any) {
+      console.error('Reset password error:', error);
       throw error;
     }
   };
