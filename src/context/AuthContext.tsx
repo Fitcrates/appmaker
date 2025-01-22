@@ -49,38 +49,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
+      // First check if the email already exists
+      const { data: existingUsers, error: searchError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', email)
+        .limit(1);
+
+      if (searchError) throw searchError;
+
+      if (existingUsers && existingUsers.length > 0) {
+        throw new Error('An account with this email already exists. Please try logging in or reset your password.');
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             name: name,
-          }
+          },
         },
       });
 
-      console.log('Signup response:', { data, error });
+      if (error) throw error;
 
-      if (error) {
-        if (error.message.includes('rate limit')) {
-          throw new Error('Please try again');
-        }
-        if (error.message.includes('already registered')) {
-          throw new Error('This email is already registered. Please sign in instead.');
-        }
-        throw error;
+      // Create user profile in users table
+      if (data.user) {
+        const { error: profileError } = await supabase.from('users').insert([
+          {
+            id: data.user.id,
+            email: email,
+            name: name,
+          },
+        ]);
+
+        if (profileError) throw profileError;
       }
 
-      if (!data.user) {
-        throw new Error('Signup failed. Please try again.');
-      }
-
-      // User is automatically signed in by Supabase
-      setUser(data.user);
-
-      // Show a welcome toast or notification here if you want
-      // toast?.success('Welcome to AnimeSearch!');
-      
+      return data;
     } catch (error: any) {
       console.error('Signup process error:', error);
       throw error;
