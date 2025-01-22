@@ -10,6 +10,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   loading: boolean;
 }
 
@@ -168,6 +169,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${import.meta.env.VITE_APP_URL}/reset-password`,
+    });
+    
+    if (error) {
+      throw error;
+    }
+  };
+
   const value = {
     user,
     supabase,
@@ -176,6 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogle,
     signOut,
     resendVerificationEmail,
+    resetPassword,
     loading,
   };
 
