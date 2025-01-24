@@ -148,33 +148,54 @@ export function Navbar() {
     <nav className="bg-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
+          <div className="flex items-center">
+            {/* Desktop navigation */}
+            <div className="flex-shrink-0 flex items-center mr-4">
               <Link to="/" className="text-xl font-bold text-gray-800">
                 AnimeCrates
               </Link>
             </div>
+            <div className="hidden md:flex md:items-center md:space-x-4">
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="text-gray-600 hover:text-gray-900 p-2 rounded-lg hover:bg-gray-100"
+                aria-label="Search"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+              <Link
+                to="/"
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Home
+              </Link>
+              <Link
+                to="/genres"
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Explore anime
+              </Link>
+              <Link
+                to="/forum"
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Forum
+              </Link>
+            </div>
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="md:hidden flex items-center">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+            >
+              {isOpen ? <X className="block h-6 w-6" /> : <Menu className="block h-6 w-6" />}
+            </button>
           </div>
 
           {/* Desktop menu */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link to="/" className="text-gray-600 hover:text-gray-900">
-              Home
-            </Link>
-            <Link to="/genres" className="text-gray-600 hover:text-gray-900">
-              Explore Anime 
-            </Link>
-            <Link to="/forum" className="text-gray-600 hover:text-gray-900">
-              Forum
-            </Link>
-            
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              <Search className="h-5 w-5" />
-            </button>
-
             {user ? (
               <div className="relative group z-50">
                 <button className="flex items-center text-gray-600 hover:text-gray-900 pb-2">
@@ -212,16 +233,6 @@ export function Navbar() {
               </button>
             )}
           </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-            >
-              {isOpen ? <X className="block h-6 w-6" /> : <Menu className="block h-6 w-6" />}
-            </button>
-          </div>
         </div>
       </div>
 
@@ -229,6 +240,19 @@ export function Navbar() {
       {isOpen && (
         <div className="md:hidden">
           <div className="pt-2 pb-3 space-y-1">
+            <div className="px-3 py-2 text-lg font-bold text-gray-800 border-b border-gray-200 mb-2">
+              AnimeCrates
+            </div>
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+              aria-label="Search"
+            >
+              <div className="flex items-center">
+                <Search className="h-5 w-5 mr-2" />
+                <span>Search</span>
+              </div>
+            </button>
             <Link
               to="/"
               className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
@@ -247,14 +271,6 @@ export function Navbar() {
             >
               Forum
             </Link>
-            
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-              aria-label="Search"
-            >
-              <Search className="h-5 w-5" />
-            </button>
 
             {user ? (
               <>
@@ -270,24 +286,6 @@ export function Navbar() {
                 >
                   My Ratings
                 </Link>
-              </>
-            ) : (
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-              >
-                Log In
-              </button>
-            )}
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-              aria-label="Search"
-            >
-              <Search className="h-5 w-5" />
-            </button>
-            {user ? (
-              <>
                 <span className="block px-3 py-2 text-base font-medium text-gray-700">
                   {user.user_metadata.name || user.email}
                 </span>
