@@ -170,8 +170,8 @@ function AnimePage() {
         // Less strict validation - only check essential fields
         const validReviews = data.data.filter((review: Review) => 
           review?.mal_id && 
-          review?.review && 
-          review?.user
+          typeof review?.review === 'string' && 
+          review?.user?.username
         );
         console.log('Valid reviews count:', validReviews.length);
         setReviews(validReviews);
@@ -179,12 +179,12 @@ function AnimePage() {
         console.log('No reviews data found');
         setReviews([]);
       }
-      setHasLoadedReviews(true);
     } catch (error) {
       console.error('Error loading reviews:', error);
       setReviews([]);
     } finally {
       setIsLoadingReviews(false);
+      setHasLoadedReviews(true);
     }
   }, [id, hasLoadedReviews, isLoadingReviews]);
 
@@ -212,6 +212,18 @@ function AnimePage() {
     }
   }, [id, hasLoadedRecommendations, isLoadingRecommendations]);
 
+  useEffect(() => {
+    loadReviews();
+  }, [loadReviews]);
+
+  useEffect(() => {
+    loadCharacters();
+  }, [loadCharacters]);
+
+  useEffect(() => {
+    loadRecommendations();
+  }, [loadRecommendations]);
+
   // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -228,6 +240,7 @@ function AnimePage() {
     setIsLoadingCharacters(false);
     setIsLoadingReviews(false);
     setIsLoadingRecommendations(false);
+    setCurrentReviewPage(1);
     window.scrollTo(0, 0);
   }, [id]);
 
@@ -240,9 +253,11 @@ function AnimePage() {
       
       setIsLoading(true);
       try {
+        console.log('Fetching anime data for ID:', id);
         const data = await fetchFromAPI<any>(`/anime/${id}/full`);
         if (!isSubscribed) return;
         
+        console.log('Received anime data:', data);
         setAnime(data?.data);
         
         // Preload related anime
@@ -252,22 +267,19 @@ function AnimePage() {
         }
       } catch (error) {
         console.error('Error fetching anime:', error);
+        if (!isSubscribed) return;
+        setError(error as Error);
       } finally {
         if (isSubscribed) {
           setIsLoading(false);
-          // Check visibility after a short delay to ensure DOM is ready
-          setTimeout(() => {
-            if (!isSubscribed) return;
-            if (isElementInViewport(charactersRef.current)) loadCharacters();
-            if (isElementInViewport(reviewsRef.current)) loadReviews();
-            if (isElementInViewport(recommendationsRef.current)) loadRecommendations();
-          }, 100);
         }
       }
     };
 
     fetchAnimeData();
-    return () => { isSubscribed = false; };
+    return () => {
+      isSubscribed = false;
+    };
   }, [id]);
 
   // Debounced scroll handler
