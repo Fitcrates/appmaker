@@ -162,8 +162,10 @@ function AnimePage() {
     
     setIsLoadingReviews(true);
     try {
+      console.log('Loading reviews for anime:', id);
       const data = await fetchFromAPI<any>(`/anime/${id}/reviews`, {}, RequestPriority.LOW);
       console.log('Reviews API response:', data);
+      
       if (data?.data) {
         // Less strict validation - only check essential fields
         const validReviews = data.data.filter((review: Review) => 
@@ -173,8 +175,11 @@ function AnimePage() {
         );
         console.log('Valid reviews count:', validReviews.length);
         setReviews(validReviews);
-        setHasLoadedReviews(true);
+      } else {
+        console.log('No reviews data found');
+        setReviews([]);
       }
+      setHasLoadedReviews(true);
     } catch (error) {
       console.error('Error loading reviews:', error);
       setReviews([]);
@@ -651,7 +656,7 @@ function AnimePage() {
           title="Review"
         >
           {selectedReview && (
-            <div className="p-4">
+            <div className="p-4 max-h-[80vh] overflow-y-auto">
               <div className="flex items-center mb-4">
                 <img
                   src={selectedReview.user?.images?.jpg?.image_url || '/placeholder-avatar.png'}
@@ -682,7 +687,9 @@ function AnimePage() {
                     </span>
                   ))}
                 </div>
-                <p className="text-gray-700 whitespace-pre-wrap">{selectedReview.review}</p>
+                <div className="prose max-w-none">
+                  <p className="text-gray-700 whitespace-pre-wrap break-words">{selectedReview.review}</p>
+                </div>
                 {selectedReview.reactions && (
                   <div className="flex items-center gap-4 mt-4 text-gray-600">
                     <div className="flex items-center">
