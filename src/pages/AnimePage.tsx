@@ -145,10 +145,39 @@ function AnimePage() {
     
     setIsLoadingCharacters(true);
     try {
-      const data = await fetchFromAPI<any>(`/anime/${id}/characters`, {}, RequestPriority.MEDIUM);
+      console.log('Loading characters for anime:', id);
+      const data = await fetchFromAPI<any>(`/anime/${id}/characters`);
+      console.log('Characters API response:', data);
+      
       if (data?.data) {
-        setCharacters(data.data);
-        setHasLoadedCharacters(true);
+        // Less strict validation and safer image handling
+        const validCharacters = data.data
+          .filter((char: any) => {
+            try {
+              return char?.character?.mal_id && char?.character?.name;
+            } catch (e) {
+              console.error('Error validating character:', e);
+              return false;
+            }
+          })
+          .map((char: any) => ({
+            character: {
+              mal_id: char.character.mal_id,
+              name: char.character.name,
+              images: {
+                jpg: {
+                  image_url: char?.character?.images?.jpg?.image_url || '/placeholder-avatar.png'
+                }
+              }
+            },
+            role: char?.role || 'Unknown Role'
+          }));
+        
+        console.log('Valid characters count:', validCharacters.length);
+        if (validCharacters.length > 0) {
+          setCharacters(validCharacters);
+          setHasLoadedCharacters(true);
+        }
       }
     } catch (error) {
       console.error('Error loading characters:', error);
@@ -163,16 +192,37 @@ function AnimePage() {
     setIsLoadingReviews(true);
     try {
       console.log('Loading reviews for anime:', id);
-      const data = await fetchFromAPI<any>(`/anime/${id}/reviews`, {}, RequestPriority.LOW);
+      const data = await fetchFromAPI<any>(`/anime/${id}/reviews`);
       console.log('Reviews API response:', data);
       
       if (data?.data) {
-        // Less strict validation - only check essential fields
-        const validReviews = data.data.filter((review: Review) => 
-          review?.mal_id && 
-          typeof review?.review === 'string' && 
-          review?.user?.username
-        );
+        // Less strict validation and safer image handling
+        const validReviews = data.data.filter((review: any) => {
+          try {
+            return (
+              review?.mal_id &&
+              typeof review?.review === 'string' &&
+              review?.user?.username &&
+              // Check if image exists but don't require it
+              (review?.user?.images?.jpg?.image_url || true)
+            );
+          } catch (e) {
+            console.error('Error validating review:', e);
+            return false;
+          }
+        }).map((review: any) => ({
+          ...review,
+          user: {
+            ...review.user,
+            images: {
+              jpg: {
+                // Use a fallback image if none exists
+                image_url: review?.user?.images?.jpg?.image_url || '/placeholder-avatar.png'
+              }
+            }
+          }
+        }));
+        
         console.log('Valid reviews count:', validReviews.length);
         setReviews(validReviews);
       } else {
@@ -193,22 +243,49 @@ function AnimePage() {
     
     setIsLoadingRecommendations(true);
     try {
-      const data = await fetchFromAPI<{ data: AnimeRecommendation[] }>(`/anime/${id}/recommendations`, {}, RequestPriority.LOW);
+      console.log('Loading recommendations for anime:', id);
+      const data = await fetchFromAPI<any>(`/anime/${id}/recommendations`);
       console.log('Recommendations API response:', data);
+      
       if (data?.data) {
-        // Less strict validation - only check essential fields
-        const validRecommendations = data.data.filter(
-          rec => rec?.entry?.mal_id && rec?.entry?.title
-        );
+        // Less strict validation and safer image handling
+        const validRecommendations = data.data.filter((rec: any) => {
+          try {
+            return (
+              rec?.entry?.mal_id &&
+              rec?.entry?.title &&
+              // Check if image exists but don't require it
+              (rec?.entry?.images?.jpg?.image_url || true)
+            );
+          } catch (e) {
+            console.error('Error validating recommendation:', e);
+            return false;
+          }
+        }).map((rec: any) => ({
+          ...rec,
+          entry: {
+            ...rec.entry,
+            images: {
+              jpg: {
+                // Use a fallback image if none exists
+                image_url: rec?.entry?.images?.jpg?.image_url || '/placeholder.jpg'
+              }
+            }
+          }
+        }));
+        
         console.log('Valid recommendations count:', validRecommendations.length);
         setRecommendations(validRecommendations);
-        setHasLoadedRecommendations(true);
+      } else {
+        console.log('No recommendations data found');
+        setRecommendations([]);
       }
     } catch (error) {
       console.error('Error loading recommendations:', error);
       setRecommendations([]);
     } finally {
       setIsLoadingRecommendations(false);
+      setHasLoadedRecommendations(true);
     }
   }, [id, hasLoadedRecommendations, isLoadingRecommendations]);
 
@@ -254,16 +331,47 @@ function AnimePage() {
       setIsLoading(true);
       try {
         console.log('Fetching anime data for ID:', id);
-        const data = await fetchFromAPI<any>(`/anime/${id}/full`);
+        const response = await fetchFromAPI<any>(`/anime/${id}`);
         if (!isSubscribed) return;
         
-        console.log('Received anime data:', data);
-        setAnime(data?.data);
-        
-        // Preload related anime
-        if (data?.data?.genres?.length > 0) {
-          const genreIds = data.data.genres.slice(0, 2).map((g: any) => g.mal_id).join(',');
-          fetchFromAPI(`/anime`, { genres: genreIds, limit: 5 }, RequestPriority.LOW);
+        console.log('Received anime data:', response);
+        if (response?.data) {
+          const animeData = response.data;
+          // Ensure the anime object has all required properties with proper fallbacks
+          const processedAnime = {
+            mal_id: animeData.mal_id,
+            title: animeData.title || 'Unknown Title',
+            images: {
+              jpg: {
+                image_url: animeData?.images?.jpg?.image_url || '/placeholder.jpg',
+                large_image_url: animeData?.images?.jpg?.large_image_url || animeData?.images?.jpg?.image_url || '/placeholder.jpg'
+              }
+            },
+            synopsis: animeData.synopsis || 'No synopsis available.',
+            score: animeData.score || null,
+            aired: {
+              from: animeData.aired?.from || null
+            },
+            rating: animeData.rating || 'Rating not available',
+            genres: Array.isArray(animeData.genres) ? animeData.genres : [],
+            studios: Array.isArray(animeData.studios) ? animeData.studios : [],
+            producers: Array.isArray(animeData.producers) ? animeData.producers : [],
+            status: animeData.status || 'Status unknown',
+            episodes: animeData.episodes || 'Unknown',
+            duration: animeData.duration || 'Unknown',
+            trailer: animeData.trailer || null
+          };
+          console.log('Processed anime data:', processedAnime);
+          setAnime(processedAnime);
+          
+          // Only preload related anime if we successfully got the main anime data
+          if (processedAnime.genres?.length > 0) {
+            const genreIds = processedAnime.genres.slice(0, 2).map(g => g.mal_id).join(',');
+            fetchFromAPI(`/anime`, { genres: genreIds, limit: 5 }, RequestPriority.LOW);
+          }
+        } else {
+          console.error('No anime data found in response');
+          setError(new Error('No anime data found'));
         }
       } catch (error) {
         console.error('Error fetching anime:', error);
@@ -355,18 +463,31 @@ function AnimePage() {
           <div className="md:flex">
             <div className="md:w-1/3">
               <img
-                src={anime.images.jpg.large_image_url}
-                alt={anime.title}
+                src={anime?.images?.jpg?.large_image_url || anime?.images?.jpg?.image_url || '/placeholder.jpg'}
+                alt={anime?.title || 'Anime image'}
                 className="w-full h-auto"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder.jpg';
+                }}
               />
             </div>
 
             <div className="p-6 md:w-2/3">
-              <h1 className="text-3xl font-bold mb-4">{anime.title}</h1>
+              <h1 className="text-3xl font-bold mb-4">{anime?.title || 'Loading...'}</h1>
 
               <div className="flex items-center mb-4">
-                <Star className="h-5 w-5 text-yellow-400 mr-1" />
-                <span className="font-semibold">{anime.score || 'N/A'}</span>
+                {anime?.score && (
+                  <>
+                    <Star className="h-5 w-5 text-yellow-400 mr-1" />
+                    <span className="mr-4">{anime.score}</span>
+                  </>
+                )}
+                {anime?.aired?.from && (
+                  <span className="text-gray-600">
+                    {new Date(anime.aired.from).getFullYear()}
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-6">
@@ -391,7 +512,7 @@ function AnimePage() {
               <div className="mb-6">
                 <h3 className="font-semibold mb-2">Genres</h3>
                 <div className="flex flex-wrap gap-2">
-                  {anime.genres.map((genre) => (
+                  {anime?.genres?.map((genre) => (
                     <span
                       key={genre.mal_id}
                       className="px-3 py-1 bg-gray-100 rounded-full text-sm"
@@ -404,7 +525,7 @@ function AnimePage() {
 
               <div>
                 <h3 className="font-semibold mb-2">Synopsis</h3>
-                <p className="text-gray-600 whitespace-pre-line">{anime.synopsis}</p>
+                <p className="text-gray-600 whitespace-pre-line">{anime?.synopsis || 'No synopsis available.'}</p>
               </div>
 
               {anime.trailer && anime.trailer.embed_url && (
