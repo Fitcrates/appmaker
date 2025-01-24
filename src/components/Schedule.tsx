@@ -126,7 +126,39 @@ export function Schedule() {
                     )}
                   </div>
                   <div className="p-4">
-                    <h3 className="font-medium text-sm line-clamp-2">{anime.title}</h3>
+                    <h3 className="font-medium text-sm line-clamp-2 mb-2">{anime.title}</h3>
+                    {(anime.broadcast || anime.producers?.length > 0) && (
+                      <div className="text-xs text-gray-600 space-y-1">
+                        {anime.broadcast && (
+                          <div className="flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10"/>
+                              <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            <span>
+                              {anime.broadcast.time ? (
+                                <>
+                                  {anime.broadcast.time} {anime.broadcast.timezone}
+                                </>
+                              ) : (
+                                'Time TBA'
+                              )}
+                            </span>
+                          </div>
+                        )}
+                        {anime.producers && anime.producers.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
+                              <polyline points="17 2 12 7 7 2"/>
+                            </svg>
+                            <span className="line-clamp-1">
+                              {anime.producers.map(producer => producer.name).join(', ')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </Link>
