@@ -331,27 +331,66 @@ function GenrePage() {
       ) : animeData.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {animeData.map((anime) => (
-            <Link
-              to={`/anime/${anime.mal_id}`}
-              key={anime.mal_id}
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200"
-            >
-              <div className="relative pb-[140%]">
-                <img
-                  src={anime.images?.jpg?.image_url || anime.images?.webp?.image_url || '/placeholder.jpg'}
-                  alt={anime.title}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-              <div className="p-4">
-                <h3 className="font-medium text-gray-900 mb-1 line-clamp-2">{anime.title}</h3>
-                <div className="flex items-center text-sm text-gray-600">
-                  <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                  <span>{anime.score || 'N/A'}</span>
+            <div key={anime.mal_id} className="relative group">
+              <Link
+                to={`/anime/${anime.mal_id}`}
+                className="block"
+                onClick={(e) => {
+                  if (selectedAnime) {
+                    e.preventDefault();
+                  }
+                }}
+              >
+                <div className="bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-200 hover:shadow-xl">
+                  <div className="relative aspect-[3/4]">
+                    <LazyLoad>
+                      <img
+                        src={anime.images.jpg.image_url}
+                        alt={anime.title}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    </LazyLoad>
+                    {anime.score && (
+                      <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded-full text-sm flex items-center">
+                        <Star className="h-4 w-4 text-yellow-400 mr-1" />
+                        {anime.score}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-medium text-sm line-clamp-2">{anime.title}</h3>
+                  </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+
+              {/* Watchlist Button */}
+              <Tooltip content="Save to watchlist">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    isInWatchlist[anime.mal_id] ? removeFromWatchlist(anime.mal_id) : addToWatchlist(anime);
+                  }}
+                  className="absolute top-2 right-12 bg-black/70 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/80"
+                >
+                  <Bookmark className={`w-4 h-4 ${isInWatchlist[anime.mal_id] ? 'fill-current' : 'fill-none'}`} />
+                </button>
+              </Tooltip>
+
+              {/* Info Button */}
+              <Tooltip content="Information">
+                <button
+                  className="absolute top-2 right-2 bg-black/70 text-white w-8 h-8 rounded-full group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center hover:bg-black/80"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedAnime(anime);
+                  }}
+                >
+                  <Info className="w-4 h-4" />
+                </button>
+              </Tooltip>
+            </div>
           ))}
         </div>
       ) : (
