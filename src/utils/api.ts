@@ -146,7 +146,7 @@ export const fetchFromAPI = async <T>(endpoint: string, params?: Record<string, 
   }
 
   // If this is an individual anime fetch, check if it's already being fetched
-  if (endpoint.startsWith('/anime/') && !endpoint.includes('?')) {
+  if (endpoint.startsWith('/anime/') && !endpoint.includes('?') && !endpoint.includes('/characters') && !endpoint.includes('/reviews') && !endpoint.includes('/recommendations')) {
     const animeId = endpoint.split('/')[2];
     const pendingKey = `pending_${animeId}`;
     const pendingPromise = pendingRequests.get(pendingKey);
@@ -162,6 +162,7 @@ export const fetchFromAPI = async <T>(endpoint: string, params?: Record<string, 
 
         if (!response.ok) {
           if (response.status === 429) {
+            console.log('Rate limit hit, waiting 3 seconds...');
             await delay(3000);
             return fetchFromAPI(endpoint, params, priority);
           }
@@ -169,10 +170,12 @@ export const fetchFromAPI = async <T>(endpoint: string, params?: Record<string, 
         }
 
         const data = await response.json();
+        console.log('Received data for anime:', data);
         apiCache.set(fullEndpoint, data);
         pendingRequests.delete(pendingKey);
         return data;
       } catch (error) {
+        console.error('Error fetching anime:', error);
         pendingRequests.delete(pendingKey);
         throw error;
       }
