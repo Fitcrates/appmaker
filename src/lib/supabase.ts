@@ -18,7 +18,19 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
       ? `${window.location.origin}/auth/callback`
       : `${import.meta.env.VITE_APP_URL}/auth/callback`,
     storageKey: 'animesearch-auth-token',
-    storage: window.localStorage
+    storage: {
+      getItem: async (key) => {
+        const cookies = document.cookie.split(';');
+        const cookie = cookies.find(c => c.trim().startsWith(`${key}=`));
+        return cookie ? cookie.split('=')[1] : null;
+      },
+      setItem: async (key, value) => {
+        document.cookie = `${key}=${value};path=/;secure;samesite=strict;max-age=604800`;
+      },
+      removeItem: async (key) => {
+        document.cookie = `${key}=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      }
+    }
   },
   global: {
     headers: {
