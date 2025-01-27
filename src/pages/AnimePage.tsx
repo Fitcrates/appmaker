@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Star, ThumbsUp, ChevronLeft, ChevronRight, Play } from 'lucide-react';
+import { ArrowLeft, Star, Play } from 'lucide-react';
 import { Anime } from '../types';
 import { fetchFromAPI, RequestPriority } from '../utils/api';
 import { Modal } from '../components/Modal';
@@ -9,6 +9,9 @@ import { StarRating } from '../components/StarRating';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { AnimeCharacters } from '../components/anime/AnimeCharacters';
+import { AnimeReviews } from '../components/anime/AnimeReviews';
+import { AnimeRecommendations } from '../components/anime/AnimeRecommendations';
 
 interface Character {
   character: {
@@ -45,18 +48,6 @@ interface Review {
   };
 }
 
-interface AnimeCardProps {
-  anime: {
-    mal_id: number;
-    title: string;
-    images: {
-      jpg: {
-        image_url: string;
-      };
-    };
-  };
-}
-
 interface AnimeRecommendation {
   entry: {
     mal_id: number;
@@ -68,21 +59,6 @@ interface AnimeRecommendation {
     };
   };
 }
-
-const AnimeCard: React.FC<AnimeCardProps> = ({ anime }) => (
-  <Link to={`/anime/${anime.mal_id}`} className="block">
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden transition-transform hover:scale-105">
-      <img
-        src={anime.images.jpg.image_url}
-        alt={anime.title}
-        className="w-full h-48 object-cover"
-      />
-      <div className="p-4">
-        <h3 className="font-medium text-sm line-clamp-2">{anime.title}</h3>
-      </div>
-    </div>
-  </Link>
-);
 
 function AnimePage() {
   const { id } = useParams<{ id: string }>();
@@ -100,14 +76,9 @@ function AnimePage() {
   const [ratingMessage, setRatingMessage] = useState('');
   const { user } = useAuth();
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const reviewsPerPage = 3;
   const totalPages = Math.ceil(reviews.length / reviewsPerPage);
-  const currentReviews = reviews.slice(
-    (currentReviewPage - 1) * reviewsPerPage,
-    currentReviewPage * reviewsPerPage
-  );
 
   const [hasLoadedCharacters, setHasLoadedCharacters] = useState(false);
   const [hasLoadedReviews, setHasLoadedReviews] = useState(false);
@@ -133,19 +104,6 @@ function AnimePage() {
     });
   }, [isCharactersVisible, isReviewsVisible, isRecommendationsVisible]);
 
-  // Check if an element is in viewport
-  const isElementInViewport = (element: HTMLElement | null) => {
-    if (!element) return false;
-    const rect = element.getBoundingClientRect();
-    return (
-      rect.top >= -rect.height &&
-      rect.left >= -rect.width &&
-      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) + rect.height &&
-      rect.right <= (window.innerWidth || document.documentElement.clientWidth) + rect.width
-    );
-  };
-
-  // Load data functions with debounce
   const loadCharacters = useCallback(async () => {
     if (!id || hasLoadedCharacters || isLoadingCharacters) return;
     
@@ -156,7 +114,6 @@ function AnimePage() {
       console.log('Characters API response:', data);
       
       if (data?.data) {
-        // Less strict validation and safer image handling
         const validCharacters = data.data
           .filter((char: any) => {
             try {
@@ -202,7 +159,6 @@ function AnimePage() {
       console.log('Reviews API response:', data);
       
       if (data?.data) {
-        // Less strict validation and safer image handling
         const validReviews = data.data.filter((review: any) => {
           try {
             return (
@@ -254,7 +210,6 @@ function AnimePage() {
       console.log('Recommendations API response:', data);
       
       if (data?.data) {
-        // Less strict validation and safer image handling
         const validRecommendations = data.data.filter((rec: any) => {
           try {
             return (
@@ -307,12 +262,10 @@ function AnimePage() {
     loadRecommendations();
   }, [loadRecommendations]);
 
-  // Scroll to top when component mounts
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id]);
 
-  // Reset state when ID changes
   useEffect(() => {
     setCharacters([]);
     setReviews([]);
@@ -327,7 +280,6 @@ function AnimePage() {
     window.scrollTo(0, 0);
   }, [id]);
 
-  // Load initial anime data
   useEffect(() => {
     let isSubscribed = true;
 
@@ -343,7 +295,6 @@ function AnimePage() {
         console.log('Received anime data:', response);
         if (response?.data) {
           const animeData = response.data;
-          // Ensure the anime object has all required properties with proper fallbacks
           const processedAnime = {
             mal_id: animeData.mal_id,
             title: animeData.title || 'Unknown Title',
@@ -370,7 +321,6 @@ function AnimePage() {
           console.log('Processed anime data:', processedAnime);
           setAnime(processedAnime);
           
-          // Only preload related anime if we successfully got the main anime data
           if (processedAnime.genres?.length > 0) {
             const genreIds = processedAnime.genres.slice(0, 2).map(g => g.mal_id).join(',');
             fetchFromAPI(`/anime`, { genres: genreIds, limit: 5 }, RequestPriority.LOW);
@@ -414,7 +364,6 @@ function AnimePage() {
         return;
       }
       
-      // Set the rating directly from data if it exists
       setUserRating(data?.rating ?? 0);
       setRatingMessage('');
     } catch (error) {
@@ -472,7 +421,6 @@ function AnimePage() {
     }
   }, [user, anime?.mal_id]);
 
-  // Debounced scroll handler
   const debouncedScroll = useMemo(() => {
     let timeoutId: NodeJS.Timeout;
     return () => {
@@ -487,7 +435,6 @@ function AnimePage() {
     };
   }, [loadCharacters, loadReviews, loadRecommendations, hasLoadedCharacters, hasLoadedReviews, hasLoadedRecommendations]);
 
-  // Load additional data on scroll
   useEffect(() => {
     window.addEventListener('scroll', debouncedScroll, { passive: true });
     return () => window.removeEventListener('scroll', debouncedScroll);
@@ -500,446 +447,182 @@ function AnimePage() {
     }
   };
 
-  if (isLoading) {
+  const isElementInViewport = (element: HTMLElement | null) => {
+    if (!element) return false;
+    const rect = element.getBoundingClientRect();
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4">
-          <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Search
-          </Link>
-          <div className="text-center py-8">Loading...</div>
-        </div>
-      </div>
+      rect.top >= -rect.height &&
+      rect.left >= -rect.width &&
+      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) + rect.height &&
+      rect.right <= (window.innerWidth || document.documentElement.clientWidth) + rect.width
     );
-  }
-
-  if (error || !anime) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4">
-          <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Search
-          </Link>
-          <div className="text-red-600 text-center py-8">
-            {error || 'Failed to load anime details'}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 py-8">
-        <Link
-          to="/"
-          className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+        <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
+          <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Search
         </Link>
 
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="md:flex">
-            {/* Left column - Image */}
-            <div className="md:w-1/3 flex-shrink-0">
-              <img
-                src={anime?.images?.jpg?.large_image_url || anime?.images?.jpg?.image_url || '/placeholder.jpg'}
-                alt={anime?.title || 'Anime image'}
-                className="w-full h-auto object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/placeholder.jpg';
-                }}
+        {error ? (
+          <div className="text-red-500">{error}</div>
+        ) : isLoading ? (
+          <div className="animate-pulse">Loading...</div>
+        ) : anime ? (
+          <div>
+            <div className="flex flex-col md:flex-row gap-8">
+              <div className="md:w-1/3 lg:w-1/4">
+                <img
+                  src={anime.images.jpg.large_image_url}
+                  alt={anime.title}
+                  className="w-full rounded-lg shadow-lg"
+                />
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Score</span>
+                    <div className="flex items-center">
+                      <Star className="w-4 h-4 text-yellow-400 mr-1" />
+                      <span>{anime.score}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Rank</span>
+                    <span>#{anime.rank}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Popularity</span>
+                    <span>#{anime.popularity}</span>
+                  </div>
+                </div>
+                {user && (
+                  <div className="mt-4">
+                    <h3 className="font-medium mb-2">Your Rating</h3>
+                    <StarRating
+                      initialRating={userRating}
+                      onRate={handleRatingChange}
+                      disabled={isRating}
+                    />
+                    {ratingMessage && (
+                      <p className="text-sm text-gray-600 mt-1">{ratingMessage}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="md:w-2/3 lg:w-3/4">
+                <h1 className="text-3xl font-bold mb-2">{anime.title}</h1>
+                <h2 className="text-xl text-gray-600 mb-4">{anime.title_japanese}</h2>
+                {anime.trailer.youtube_id && (
+                  <button
+                    onClick={() => setShowTrailer(true)}
+                    className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors mb-4"
+                  >
+                    <Play className="w-4 h-4" />
+                    Watch Trailer
+                  </button>
+                )}
+                <p className="text-gray-700 mb-4">{anime.synopsis}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="font-medium mb-2">Information</h3>
+                    <dl className="space-y-1">
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">Type</dt>
+                        <dd>{anime.type}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">Episodes</dt>
+                        <dd>{anime.episodes}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">Status</dt>
+                        <dd>{anime.status}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">Aired</dt>
+                        <dd>{anime.aired.string}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                  <div>
+                    <h3 className="font-medium mb-2">Statistics</h3>
+                    <dl className="space-y-1">
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">Members</dt>
+                        <dd>{anime.members.toLocaleString()}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">Favorites</dt>
+                        <dd>{anime.favorites.toLocaleString()}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div ref={charactersRef}>
+              <AnimeCharacters
+                characters={characters}
+                isLoading={isLoadingCharacters}
               />
             </div>
 
-            {/* Right column - Content */}
-            <div className="md:w-2/3 p-6">
-              <h1 className="text-3xl font-bold mb-4">{anime?.title || 'Loading...'}</h1>
+            <div ref={reviewsRef}>
+              <AnimeReviews
+                reviews={reviews}
+                currentReviewPage={currentReviewPage}
+                totalPages={totalPages}
+                reviewsPerPage={reviewsPerPage}
+                isLoading={isLoadingReviews}
+                onPageChange={setCurrentReviewPage}
+                onReviewClick={setSelectedReview}
+              />
+            </div>
 
-              <div className="flex items-center mb-4">
-                {anime?.score && (
-                  <>
-                    <Star className="h-5 w-5 text-yellow-400 mr-1" />
-                    <span className="mr-4">{anime.score}</span>
-                  </>
-                )}
-                {anime?.aired?.from && (
-                  <span className="text-gray-600">
-                    {new Date(anime.aired.from).getFullYear()}
-                  </span>
-                )}
-              </div>
-
-              <div className="mb-6">
-                <h3 className="font-semibold mb-2">Your Rating</h3>
-                <StarRating
-                  initialRating={userRating}
-                  onRatingChange={handleRatingChange}
-                  disabled={isRating}
-                />
-                {ratingMessage && (
-                  <p className={`mt-2 text-sm ${ratingMessage.includes('Failed') ? 'text-red-500' : 'text-green-500'}`}>
-                    {ratingMessage}
-                  </p>
-                )}
-              </div>
-
-              <div className="prose max-w-none mb-6">
-                <h3 className="font-semibold mb-2">Synopsis</h3>
-                <p className="text-gray-700">{anime?.synopsis || 'No synopsis available.'}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <h3 className="font-semibold">Status</h3>
-                  <p>{anime.status}</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Episodes</h3>
-                  <p>{anime.episodes || 'N/A'}</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Duration</h3>
-                  <p>{anime.duration}</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Rating</h3>
-                  <p>{anime.rating}</p>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <h3 className="font-semibold mb-2">Genres</h3>
-                <div className="flex flex-wrap gap-2">
-                  {anime?.genres?.map((genre) => (
-                    <span
-                      key={genre.mal_id}
-                      className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm"
-                    >
-                      {genre.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {anime.trailer && anime.trailer.embed_url && (
-                <div className="mt-6">
-                  <h3 className="font-semibold mb-2">Trailer</h3>
-                  <button
-                    onClick={handleTrailerClick}
-                    className="group relative block w-full max-w-sm overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300"
-                  >
-                    <div className="relative aspect-video bg-black">
-                      {anime.trailer.images?.maximum_image_url ? (
-                        <img
-                          src={anime.trailer.images.maximum_image_url}
-                          alt={`${anime.title} Trailer`}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
-                          <Play className="h-12 w-12 text-gray-600" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                        <div className="bg-red-600 rounded-full p-4 transform group-hover:scale-110 transition-transform">
-                          <Play className="h-8 w-8 text-white" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-                      <p className="text-white text-sm font-medium">Watch Trailer</p>
-                    </div>
-                  </button>
-                </div>
-              )}
+            <div ref={recommendationsRef}>
+              <AnimeRecommendations
+                recommendations={recommendations}
+                isLoading={isLoadingRecommendations}
+              />
             </div>
           </div>
-        </div>
+        ) : null}
 
-        {/* Characters Section */}
-        <div 
-          ref={charactersRef} 
-          className="section-characters mt-8"
-          style={{ minHeight: '100px' }}
-        >
-          <h2 className="text-2xl font-bold mb-4">Characters</h2>
-          {!hasLoadedCharacters ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {[...Array(12)].map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="bg-gray-200 rounded-lg h-40 mb-2"></div>
-                  <div className="bg-gray-200 h-4 rounded w-3/4"></div>
-                </div>
-              ))}
-            </div>
-          ) : isLoadingCharacters ? (
-            <p>Loading...</p>
-          ) : characters.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {characters.slice(0, 12).map((char) => (
-                <div key={char.character.mal_id} className="text-center">
-                  <img
-                    src={char.character.images.jpg.image_url}
-                    alt={char.character.name}
-                    className="w-full h-40 object-cover rounded-lg mb-2"
-                  />
-                  <p className="text-sm font-medium">{char.character.name}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p>No characters found.</p>
-          )}
-        </div>
-
-        {/* Reviews Section */}
-        <div 
-          ref={reviewsRef} 
-          className="mb-12"
-        >
-          <h2 className="text-2xl font-bold mb-6">Reviews</h2>
-          {!hasLoadedReviews && !isLoadingReviews ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(3)].map((_, index) => (
-                <div key={index} className="animate-pulse bg-white rounded-lg p-6">
-                  <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 bg-gray-200 rounded-full mr-4"></div>
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-3 bg-gray-200 rounded w-full"></div>
-                    <div className="h-3 bg-gray-200 rounded w-full"></div>
-                    <div className="h-3 bg-gray-200 rounded w-3/4"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : isLoadingReviews ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            </div>
-          ) : reviews && reviews.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {currentReviews.map((review) => (
-                  <div key={review.mal_id} className="bg-white rounded-lg shadow-md p-6 flex flex-col">
-                    <div className="flex items-center mb-4">
-                      <img
-                        src={review.user?.images?.jpg?.image_url || '/placeholder-avatar.png'}
-                        alt={review.user?.username || 'Anonymous'}
-                        className="w-10 h-10 rounded-full mr-4"
-                        loading="lazy"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/placeholder-avatar.png';
-                        }}
-                      />
-                      <div>
-                        <div className="font-medium">{review.user?.username || 'Anonymous'}</div>
-                        <div className="text-sm text-gray-500">
-                          {review.date ? new Date(review.date).toLocaleDateString() : ''}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center mb-2">
-                      <div className="flex items-center">
-                        <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                        <span>{review.score ?? 'N/A'}</span>
-                      </div>
-                      {review.tags && review.tags.length > 0 && (
-                        <div className="ml-4 flex flex-wrap gap-1">
-                          {review.tags.slice(0, 2).map((tag, index) => (
-                            <span
-                              key={index}
-                              className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-gray-600 text-sm line-clamp-4 mb-4 flex-grow">
-                      {review.review}
-                    </p>
-                    <div className="flex items-center justify-between mt-auto pt-4 border-t">
-                      <div className="flex items-center gap-4">
-                        {review.reactions && (
-                          <>
-                            <div className="flex items-center text-sm text-gray-500">
-                              <ThumbsUp className="w-4 h-4 mr-1" />
-                              <span>{review.reactions.nice || 0}</span>
-                            </div>
-                            <div className="flex items-center text-sm text-gray-500">
-                              <span>❤️ {review.reactions.love_it || 0}</span>
-                            </div>
-                            <div className="flex items-center text-sm text-gray-500">
-                              <span>😄 {review.reactions.funny || 0}</span>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => setSelectedReview(review)}
-                        className="text-blue-600 hover:text-blue-800 text-sm"
-                      >
-                        Read More
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {reviews.length > reviewsPerPage && (
-                <div className="flex justify-center items-center mt-8 gap-2">
-                  <button
-                    onClick={() => setCurrentReviewPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentReviewPage === 1}
-                    className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                  <span className="mx-4">
-                    Page {currentReviewPage} of {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentReviewPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentReviewPage === totalPages}
-                    className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="text-gray-600 text-center py-8">No reviews found for this anime.</p>
-          )}
-        </div>
-
-        {/* Recommendations Section */}
-        <div 
-          ref={recommendationsRef} 
-          className="section-recommendations mt-8"
-          style={{ minHeight: '100px' }}
-        >
-          <h2 className="text-2xl font-bold mb-4">Recommendations</h2>
-          {!hasLoadedRecommendations && !isLoadingRecommendations ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="bg-gray-200 rounded-lg h-48 mb-2"></div>
-                  <div className="bg-gray-200 h-4 rounded w-3/4"></div>
-                </div>
-              ))}
-            </div>
-          ) : isLoadingRecommendations ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            </div>
-          ) : recommendations && recommendations.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recommendations.slice(0, 6).map((rec: AnimeRecommendation) => 
-                rec?.entry ? (
-                  <AnimeCard key={rec.entry.mal_id} anime={{
-                    mal_id: rec.entry.mal_id,
-                    title: rec.entry.title,
-                    images: rec.entry.images || { jpg: { image_url: '/placeholder-anime.png' } }
-                  }} />
-                ) : null
-              )}
-            </div>
-          ) : (
-            <p className="text-gray-600 text-center py-8">No recommendations found for this anime.</p>
-          )}
-        </div>
-
-        {/* Trailer Modal */}
-        <Modal
-          isOpen={showTrailer}
-          onClose={() => setShowTrailer(false)}
-          title="Trailer"
-        >
-          {showTrailer && anime?.trailer?.embed_url && (
-            <div className="relative w-full" style={{ height: '70vh' }}>
-              <iframe
-                src={anime.trailer.embed_url}
-                frameBorder="0"
-                allowFullScreen
-                className="absolute top-0 left-0 w-full h-full"
-                title={`${anime.title} Trailer`}
-              ></iframe>
-            </div>
-          )}
-        </Modal>
-
-        {/* Review Modal */}
-        <Modal
-          isOpen={!!selectedReview}
-          onClose={() => setSelectedReview(null)}
-          title="Review"
-        >
-          {selectedReview && (
-            <div className="p-4 max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center mb-4">
+        {selectedReview && (
+          <Modal onClose={() => setSelectedReview(null)}>
+            <div className="p-6 max-w-2xl w-full">
+              <div className="flex items-center gap-3 mb-4">
                 <img
-                  src={selectedReview.user?.images?.jpg?.image_url || '/placeholder-avatar.png'}
-                  alt={selectedReview.user?.username || 'Anonymous'}
-                  className="w-12 h-12 rounded-full mr-4"
-                  loading="lazy"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = '/placeholder-avatar.png';
-                  }}
+                  src={selectedReview.user.images.jpg.image_url}
+                  alt={selectedReview.user.username}
+                  className="w-12 h-12 rounded-full"
                 />
                 <div>
-                  <h3 className="font-medium text-lg">{selectedReview.user?.username || 'Anonymous'}</h3>
-                  <div className="flex items-center">
-                    <Star className="h-5 w-5 text-yellow-500 mr-1" />
-                    <span className="text-lg font-medium">{selectedReview.score ?? 'N/A'}/10</span>
-                  </div>
+                  <p className="font-medium">{selectedReview.user.username}</p>
+                  <p className="text-sm text-gray-600">{selectedReview.date}</p>
                 </div>
               </div>
-              <div className="mt-4">
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {selectedReview.tags?.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                <div className="prose max-w-none">
-                  <p className="text-gray-700 whitespace-pre-wrap break-words">{selectedReview.review}</p>
-                </div>
-                {selectedReview.reactions && (
-                  <div className="flex items-center gap-4 mt-4 text-gray-600">
-                    <div className="flex items-center">
-                      <ThumbsUp className="w-4 h-4 mr-1" />
-                      <span>{selectedReview.reactions.nice || 0}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span>❤️ {selectedReview.reactions.love_it || 0}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span>😄 {selectedReview.reactions.funny || 0}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <p className="whitespace-pre-wrap">{selectedReview.review}</p>
             </div>
-          )}
-        </Modal>
+          </Modal>
+        )}
+
+        {showTrailer && anime?.trailer.youtube_id && (
+          <Modal onClose={() => setShowTrailer(false)}>
+            <div className="aspect-video w-full max-w-4xl">
+              <iframe
+                ref={iframeRef}
+                src={`https://www.youtube.com/embed/${anime.trailer.youtube_id}`}
+                title="YouTube video player"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            </div>
+          </Modal>
+        )}
       </div>
     </div>
   );
