@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { queries } from '../utils/supabaseClient';
 
 interface Anime {
   mal_id: number;
@@ -16,23 +16,23 @@ export function useWatchlist() {
   const { user } = useAuth();
   const [isInWatchlist, setIsInWatchlist] = useState<{ [key: number]: boolean }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const fetchWatchlistStatus = async () => {
+  const fetchWatchlistStatus = useCallback(async () => {
+    if (!user) {
+      setIsInWatchlist({});
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // If no user is logged in, return early
-      if (!user) {
-        setIsInWatchlist({});
-        setIsLoading(false);
-        return;
-      }
+      setIsLoading(true);
+      const { data, error } = await queries.getWatchlistStatus(user.id);
 
-      const { data, error } = await supabase
-        .from('anime_watchlist')
-        .select('anime_id')
-        .eq('user_id', user.id);
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching watchlist status:', error);
+      if (error) {
+        if (!error.message?.includes('Failed to fetch')) {
+          console.error('Error fetching watchlist status:', error);
+        }
         return;
       }
 
@@ -42,77 +42,68 @@ export function useWatchlist() {
       }, {});
 
       setIsInWatchlist(watchlistMap);
-    } catch (error) {
-      console.error('Error fetching watchlist status:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
-  const addToWatchlist = async (anime: Anime) => {
-    try {
-      if (!user) {
-        throw new Error('Must be logged in to manage watchlist');
-      }
-
-      const { error } = await supabase
-        .from('anime_watchlist')
-        .insert({
-          user_id: user.id,
-          anime_id: anime.mal_id,
-          anime_title: anime.title,
-          anime_image: anime.images.jpg.image_url,
-          status: 'planning'
-        });
-
-      if (error) {
-        console.error('Error adding to watchlist:', error);
-        throw error;
-      }
-
-      setIsInWatchlist(prev => ({ ...prev, [anime.mal_id]: true }));
-    } catch (err) {
-      console.error('Error adding to watchlist:', err);
-      throw err;
+  useEffect(() => {
+    // Clear any existing timeout
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
     }
-  };
 
-  const removeFromWatchlist = async (animeId: number) => {
+    // Set a new timeout to fetch after a delay
+    fetchTimeoutRef.current = setTimeout(fetchWatchlistStatus, 500);
+
+    return () => {
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+    };
+  }, [fetchWatchlistStatus]);
+
+  const addToWatchlist = useCallback(async (anime: Anime) => {
+    if (!user) return;
+
     try {
-      if (!user) {
-        throw new Error('Must be logged in to manage watchlist');
-      }
+      const { error } = await queries.addToWatchlist?.(user.id, anime.mal_id);
+      if (error) throw error;
 
-      const { error } = await supabase
-        .from('anime_watchlist')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('anime_id', animeId);
-
-      if (error) {
-        console.error('Error removing from watchlist:', error);
-        throw error;
+      setIsInWatchlist(prev => ({
+        ...prev,
+        [anime.mal_id]: true
+      }));
+    } catch (error: any) {
+      if (!error.message?.includes('Failed to fetch')) {
+        console.error('Error adding to watchlist:', error);
       }
+    }
+  }, [user]);
+
+  const removeFromWatchlist = useCallback(async (animeId: number) => {
+    if (!user) return;
+
+    try {
+      const { error } = await queries.removeFromWatchlist?.(user.id, animeId);
+      if (error) throw error;
 
       setIsInWatchlist(prev => {
         const newState = { ...prev };
         delete newState[animeId];
         return newState;
       });
-    } catch (err) {
-      console.error('Error removing from watchlist:', err);
-      throw err;
+    } catch (error: any) {
+      if (!error.message?.includes('Failed to fetch')) {
+        console.error('Error removing from watchlist:', error);
+      }
     }
-  };
-
-  useEffect(() => {
-    fetchWatchlistStatus();
   }, [user]);
 
   return {
     isInWatchlist,
+    isLoading,
     addToWatchlist,
-    removeFromWatchlist,
-    isLoading
+    removeFromWatchlist
   };
 }
