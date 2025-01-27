@@ -68,12 +68,12 @@ export function StarRating({ initialRating = 0, onRatingChange, disabled = false
         >
           {isActive ? (
             isHalfActive ? (
-              <FaStarHalfAlt className={`w-8 h-8 ${disabled ? 'text-gray-400' : 'text-yellow-400'}`} />
+              <FaStarHalfAlt className={`w-8 h-8 ${disabled ? 'text-gray-400' : 'text-amber-400'}`} />
             ) : (
-              <FaStar className={`w-8 h-8 ${disabled ? 'text-gray-400' : 'text-yellow-400'}`} />
+              <FaStar className={`w-8 h-8 ${disabled ? 'text-gray-400' : 'text-amber-400'}`} />
             )
           ) : (
-            <FaStar className="w-8 h-8 text-gray-300" />
+            <FaStar className="w-8 h-8 text-gray-200" />
           )}
         </div>
       );
