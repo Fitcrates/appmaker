@@ -33,6 +33,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [sessionExpiry, setSessionExpiry] = useState<Date | null>(null);
   const sessionCheckInterval = useRef<NodeJS.Timeout>();
+  const lastSessionCheck = useRef<number>(0);
+  const authStateSubscription = useRef<{ subscription?: { unsubscribe: () => void } }>({});
 
   const checkAndRefreshSession = useCallback(async () => {
     if (!sessionExpiry) return;
@@ -40,7 +42,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const now = new Date();
     const timeUntilExpiry = sessionExpiry.getTime() - now.getTime();
 
-    if (timeUntilExpiry <= REFRESH_THRESHOLD) {
+    // Only refresh if we're within the threshold and haven't checked recently
+    if (timeUntilExpiry <= REFRESH_THRESHOLD && Date.now() - lastSessionCheck.current > 30000) {
+      lastSessionCheck.current = Date.now();
       try {
         const { data: { session }, error } = await supabase.auth.refreshSession();
         if (error) throw error;
@@ -54,22 +58,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [sessionExpiry]);
 
+  // Set up auth state listener once on mount
   useEffect(() => {
-    // Check active session
+    // Set up auth state listener only once
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setUser(session?.user ?? null);
+      if (session) {
+        setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+      } else {
+        setSessionExpiry(null);
+      }
+      setLoading(false);
+    });
+
+    authStateSubscription.current.subscription = subscription;
+
+    return () => {
+      if (authStateSubscription.current.subscription) {
+        authStateSubscription.current.subscription.unsubscribe();
+      }
+    };
+  }, []); // Empty dependency array - only run once on mount
+
+  // Set up session check interval
+  useEffect(() => {
+    // Initial session check
     const checkSession = async () => {
+      if (Date.now() - lastSessionCheck.current < 30000) return;
+      
+      lastSessionCheck.current = Date.now();
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
         
+        setUser(session?.user ?? null);
         if (session) {
-          setUser(session.user);
           setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
         } else {
-          setUser(null);
           setSessionExpiry(null);
         }
       } catch (error) {
-        console.error('Error checking session:', error);
         setUser(null);
         setSessionExpiry(null);
       } finally {
@@ -80,20 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkSession();
 
     // Set up session check interval
-    sessionCheckInterval.current = setInterval(checkAndRefreshSession, 60000); // Check every minute
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      if (session) {
-        setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
-      } else {
-        setSessionExpiry(null);
-      }
-    });
+    sessionCheckInterval.current = setInterval(checkAndRefreshSession, 300000); // Check every 5 minutes
 
     return () => {
-      subscription.unsubscribe();
       if (sessionCheckInterval.current) {
         clearInterval(sessionCheckInterval.current);
       }
