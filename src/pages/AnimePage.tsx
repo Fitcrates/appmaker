@@ -5,8 +5,10 @@ import { Anime } from '../types';
 import { fetchFromAPI, RequestPriority } from '../utils/api';
 import { Modal } from '../components/Modal';
 import { useIntersectionObserver } from '../hooks/useIntersectionObserver';
-import { VideoPlayer } from '../components/VideoPlayer';
+import { StarRating } from '../components/StarRating';
 import ErrorBoundary from '../components/ErrorBoundary';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 interface Character {
   character: {
@@ -93,6 +95,10 @@ function AnimePage() {
   const [currentReviewPage, setCurrentReviewPage] = useState(1);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
+  const [userRating, setUserRating] = useState<number>(0);
+  const [isRating, setIsRating] = useState(false);
+  const [ratingMessage, setRatingMessage] = useState('');
+  const { user } = useAuth();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -390,6 +396,82 @@ function AnimePage() {
     };
   }, [id]);
 
+  const fetchUserRating = async () => {
+    if (!user?.id || !anime?.mal_id) return;
+    
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('user_feedback')
+        .select('rating')
+        .eq('user_id', user.id)
+        .eq('anime_id', anime.mal_id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching rating:', error);
+        setRatingMessage('Failed to load rating');
+        return;
+      }
+      
+      // Set the rating directly from data if it exists
+      setUserRating(data?.rating ?? 0);
+      setRatingMessage('');
+    } catch (error) {
+      console.error('Error fetching rating:', error);
+      setRatingMessage('Failed to load rating');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRatingChange = async (rating: number) => {
+    if (!user) {
+      setRatingMessage('Please log in to rate anime');
+      return;
+    }
+
+    if (!anime?.mal_id) {
+      setRatingMessage('Invalid anime data');
+      return;
+    }
+
+    try {
+      setIsRating(true);
+      setRatingMessage('');
+
+      const { error } = await supabase
+        .from('user_feedback')
+        .upsert({
+          user_id: user.id,
+          anime_id: anime.mal_id,
+          rating: rating,
+        }, {
+          onConflict: 'user_id,anime_id'
+        });
+
+      if (error) throw error;
+      
+      setUserRating(rating);
+      setRatingMessage('Rating saved!');
+      setTimeout(() => setRatingMessage(''), 2000);
+    } catch (error: any) {
+      console.error('Error saving rating:', error);
+      setRatingMessage(error.message || 'Failed to save rating. Please try again.');
+    } finally {
+      setIsRating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && anime?.mal_id) {
+      fetchUserRating();
+    } else {
+      setUserRating(0);
+      setRatingMessage('');
+    }
+  }, [user, anime?.mal_id]);
+
   // Debounced scroll handler
   const debouncedScroll = useMemo(() => {
     let timeoutId: NodeJS.Timeout;
@@ -461,11 +543,12 @@ function AnimePage() {
 
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="md:flex">
-            <div className="md:w-1/3">
+            {/* Left column - Image */}
+            <div className="md:w-1/3 flex-shrink-0">
               <img
                 src={anime?.images?.jpg?.large_image_url || anime?.images?.jpg?.image_url || '/placeholder.jpg'}
                 alt={anime?.title || 'Anime image'}
-                className="w-full h-auto"
+                className="w-full h-auto object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = '/placeholder.jpg';
@@ -473,7 +556,8 @@ function AnimePage() {
               />
             </div>
 
-            <div className="p-6 md:w-2/3">
+            {/* Right column - Content */}
+            <div className="md:w-2/3 p-6">
               <h1 className="text-3xl font-bold mb-4">{anime?.title || 'Loading...'}</h1>
 
               <div className="flex items-center mb-4">
@@ -488,6 +572,25 @@ function AnimePage() {
                     {new Date(anime.aired.from).getFullYear()}
                   </span>
                 )}
+              </div>
+
+              <div className="mb-6">
+                <h3 className="font-semibold mb-2">Your Rating</h3>
+                <StarRating
+                  initialRating={userRating}
+                  onRatingChange={handleRatingChange}
+                  disabled={isRating}
+                />
+                {ratingMessage && (
+                  <p className={`mt-2 text-sm ${ratingMessage.includes('Failed') ? 'text-red-500' : 'text-green-500'}`}>
+                    {ratingMessage}
+                  </p>
+                )}
+              </div>
+
+              <div className="prose max-w-none mb-6">
+                <h3 className="font-semibold mb-2">Synopsis</h3>
+                <p className="text-gray-700">{anime?.synopsis || 'No synopsis available.'}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-6">
@@ -515,17 +618,12 @@ function AnimePage() {
                   {anime?.genres?.map((genre) => (
                     <span
                       key={genre.mal_id}
-                      className="px-3 py-1 bg-gray-100 rounded-full text-sm"
+                      className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm"
                     >
                       {genre.name}
                     </span>
                   ))}
                 </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">Synopsis</h3>
-                <p className="text-gray-600 whitespace-pre-line">{anime?.synopsis || 'No synopsis available.'}</p>
               </div>
 
               {anime.trailer && anime.trailer.embed_url && (
@@ -639,6 +737,7 @@ function AnimePage() {
                         src={review.user?.images?.jpg?.image_url || '/placeholder-avatar.png'}
                         alt={review.user?.username || 'Anonymous'}
                         className="w-10 h-10 rounded-full mr-4"
+                        loading="lazy"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.src = '/placeholder-avatar.png';
