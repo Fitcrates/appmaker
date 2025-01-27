@@ -5,6 +5,10 @@ import { FaStar, FaStarHalfAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { fetchFromAPI, RequestPriority } from '../utils/api';
 
+// Cache for anime details
+const animeCache: { [key: number]: { data: any; timestamp: number } } = {};
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
 interface AnimeRating {
   anime_id: number;
   rating: number;
@@ -35,6 +39,29 @@ export function UserRating() {
   const [batchSize, setBatchSize] = useState(MIN_BATCH_SIZE);
   const [lastRequestTime, setLastRequestTime] = useState(0);
   const { user } = useAuth();
+
+  // Fetch anime details with caching
+  const fetchAnimeDetails = useCallback(async (animeId: number) => {
+    const now = Date.now();
+    const cached = animeCache[animeId];
+    
+    if (cached && now - cached.timestamp < CACHE_DURATION) {
+      return cached.data;
+    }
+    
+    const data = await fetchFromAPI<any>(
+      `/anime/${animeId}`,
+      {},
+      RequestPriority.LOW
+    );
+    
+    animeCache[animeId] = {
+      data: data.data,
+      timestamp: now
+    };
+    
+    return data.data;
+  }, []);
 
   // Optimized batch size adjustment
   const adjustBatchSize = useCallback((requestTime: number) => {
@@ -85,63 +112,51 @@ export function UserRating() {
         const batch = userFeedback.slice(i, i + batchSize);
         const batchPromises = batch.map(async (feedback) => {
           try {
-            const data = await fetchFromAPI<any>(
-              `/anime/${feedback.anime_id}`,
-              {},
-              RequestPriority.LOW
-            );
+            const animeData = await fetchAnimeDetails(feedback.anime_id);
             
             return {
               anime_id: feedback.anime_id,
               rating: feedback.rating,
-              title: data.data.title,
-              image_url: data.data.images?.jpg?.image_url || PLACEHOLDER_IMAGE,
+              title: animeData.title,
+              image_url: animeData.images?.jpg?.image_url || PLACEHOLDER_IMAGE,
               updated_at: feedback.updated_at
             };
           } catch (error) {
             console.error(`Error fetching anime ${feedback.anime_id}:`, error);
-            // Return partial data with placeholder image on error
             return {
               anime_id: feedback.anime_id,
               rating: feedback.rating,
-              title: `Anime #${feedback.anime_id}`,
+              title: `Anime ${feedback.anime_id}`,
               image_url: PLACEHOLDER_IMAGE,
               updated_at: feedback.updated_at
             };
           }
         });
 
-        const batchResults = await Promise.all(batchPromises);
-        animeDetails.push(...batchResults);
-
+        const results = await Promise.all(batchPromises);
+        animeDetails.push(...results);
+        
+        // Update progress
+        setLoadingProgress(Math.round((animeDetails.length / userFeedback.length) * 100));
+        
         // Adjust batch size based on response time
         adjustBatchSize(requestStartTime);
-
-        // Update progress
-        setLoadingProgress(Math.round((i + batch.length) / userFeedback.length * 100));
-        setLastRequestTime(Date.now());
+        
+        // Add a small delay between batches to prevent rate limiting
+        if (i + batchSize < userFeedback.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
 
-      // Merge new ratings with existing ones for smooth pagination
-      setRatings(prev => {
-        const newRatings = [...prev];
-        animeDetails.forEach(rating => {
-          const index = newRatings.findIndex(r => r.anime_id === rating.anime_id);
-          if (index >= 0) {
-            newRatings[index] = rating;
-          } else {
-            newRatings.push(rating);
-          }
-        });
-        return newRatings;
-      });
+      setRatings(animeDetails);
     } catch (error: any) {
       console.error('Error fetching ratings:', error);
-      setError(error.message || 'Failed to fetch ratings');
+      setError(error.message || 'Failed to load ratings');
     } finally {
       setLoading(false);
+      setLoadingProgress(100);
     }
-  }, [user, batchSize, adjustBatchSize]);
+  }, [user, batchSize, adjustBatchSize, fetchAnimeDetails]);
 
   // Initial load
   useEffect(() => {
