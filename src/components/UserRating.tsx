@@ -10,70 +10,84 @@ const animeCache: { [key: number]: { data: any; timestamp: number } } = {};
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 interface AnimeRating {
+  id: number;
   anime_id: number;
   rating: number;
-  title: string;
-  image_url: string;
+  title?: string;
+  image_url?: string;
+  anime_title?: string;
+  anime_image?: string;
   updated_at?: string;
-}
-
-interface UserFeedback {
-  anime_id: number;
-  rating: number;
-  updated_at: string;
+  isEnhanced?: boolean;
 }
 
 const ITEMS_PER_PAGE = 12;
 const PLACEHOLDER_IMAGE = '/placeholder.jpg';
-const MIN_BATCH_SIZE = 3;
-const MAX_BATCH_SIZE = 5;
-const RATE_LIMIT_THRESHOLD = 1000; // 1 second in ms
+const BATCH_SIZE = 3;
 
 export function UserRating() {
   const [ratings, setRatings] = useState<AnimeRating[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loadingProgress, setLoadingProgress] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [batchSize, setBatchSize] = useState(MIN_BATCH_SIZE);
-  const [lastRequestTime, setLastRequestTime] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadedAnimeCount, setLoadedAnimeCount] = useState(0);
   const { user } = useAuth();
 
-  // Fetch anime details with caching
-  const fetchAnimeDetails = useCallback(async (animeId: number) => {
-    const now = Date.now();
-    const cached = animeCache[animeId];
-    
-    if (cached && now - cached.timestamp < CACHE_DURATION) {
-      return cached.data;
-    }
-    
-    const data = await fetchFromAPI<any>(
-      `/anime/${animeId}`,
-      {},
-      RequestPriority.LOW
-    );
-    
-    animeCache[animeId] = {
-      data: data.data,
-      timestamp: now
-    };
-    
-    return data.data;
-  }, []);
+  // Fetch anime details and update database
+  const enhanceAnimeData = async (rating: AnimeRating) => {
+    try {
+      // Check if we already have the enhanced data
+      if (rating.anime_title && rating.anime_image) {
+        return {
+          ...rating,
+          title: rating.anime_title,
+          image_url: rating.anime_image,
+          isEnhanced: true
+        };
+      }
 
-  // Optimized batch size adjustment
-  const adjustBatchSize = useCallback((requestTime: number) => {
-    const responseTime = Date.now() - requestTime;
-    if (responseTime < RATE_LIMIT_THRESHOLD && batchSize < MAX_BATCH_SIZE) {
-      setBatchSize(prev => Math.min(prev + 1, MAX_BATCH_SIZE));
-    } else if (responseTime >= RATE_LIMIT_THRESHOLD && batchSize > MIN_BATCH_SIZE) {
-      setBatchSize(prev => Math.max(prev - 1, MIN_BATCH_SIZE));
-    }
-  }, [batchSize]);
+      // Fetch from API
+      const animeData = await fetchFromAPI<any>(
+        `/anime/${rating.anime_id}`,
+        {},
+        RequestPriority.LOW
+      );
 
-  // Fetch ratings with pagination
+      if (!animeData?.data) {
+        throw new Error('No data received from API');
+      }
+
+      // Update the database with the new information
+      const { error: updateError } = await supabase
+        .from('user_feedback')
+        .update({
+          anime_title: animeData.data.title,
+          anime_image: animeData.data.images.jpg.image_url
+        })
+        .eq('id', rating.id);
+
+      if (updateError) {
+        console.error('Error updating anime data:', updateError);
+      }
+
+      // Return enhanced rating
+      return {
+        ...rating,
+        title: animeData.data.title,
+        image_url: animeData.data.images.jpg.image_url,
+        anime_title: animeData.data.title,
+        anime_image: animeData.data.images.jpg.image_url,
+        isEnhanced: true
+      };
+    } catch (error) {
+      console.error(`Error enhancing anime ${rating.anime_id}:`, error);
+      return rating;
+    }
+  };
+
+  // Load ratings with progressive enhancement
   const fetchUserRatings = useCallback(async (page: number) => {
     if (!user) return;
 
@@ -81,7 +95,7 @@ export function UserRating() {
       setError(null);
       const startIndex = (page - 1) * ITEMS_PER_PAGE;
       
-      // Fetch total count first
+      // Fetch total count
       const { count } = await supabase
         .from('user_feedback')
         .select('*', { count: 'exact', head: true })
@@ -92,268 +106,133 @@ export function UserRating() {
       // Fetch paginated feedback
       const { data: userFeedback, error: feedbackError } = await supabase
         .from('user_feedback')
-        .select('anime_id, rating, updated_at')
+        .select('*')
         .eq('user_id', user.id)
         .order('updated_at', { ascending: false })
         .range(startIndex, startIndex + ITEMS_PER_PAGE - 1);
 
       if (feedbackError) throw feedbackError;
 
-      if (!userFeedback || userFeedback.length === 0) {
-        setRatings([]);
-        setLoading(false);
-        return;
-      }
-
       // Initialize ratings with basic data
       setRatings(userFeedback.map(feedback => ({
-        anime_id: feedback.anime_id,
-        rating: feedback.rating,
-        title: `Loading...`,
-        image_url: PLACEHOLDER_IMAGE,
-        updated_at: feedback.updated_at
+        ...feedback,
+        title: feedback.anime_title || undefined,
+        image_url: feedback.anime_image || PLACEHOLDER_IMAGE,
+        isEnhanced: !!(feedback.anime_title && feedback.anime_image)
       })));
+
       setLoading(false);
 
-      // Load details in batches
-      const loadBatch = async (startIndex: number) => {
-        if (startIndex >= userFeedback.length) {
-          setLoadingProgress(100);
+      // Progressively enhance data in batches
+      const enhanceBatch = async (startIdx: number) => {
+        if (startIdx >= userFeedback.length) {
+          setIsLoadingMore(false);
           return;
         }
 
-        const endIndex = Math.min(startIndex + batchSize, userFeedback.length);
-        const currentBatch = userFeedback.slice(startIndex, endIndex);
-        const requestStartTime = Date.now();
+        setIsLoadingMore(true);
+        const endIdx = Math.min(startIdx + BATCH_SIZE, userFeedback.length);
+        const currentBatch = userFeedback.slice(startIdx, endIdx);
 
-        const batchResults = await Promise.all(
-          currentBatch.map(async (feedback) => {
-            try {
-              const animeData = await fetchAnimeDetails(feedback.anime_id);
-              return {
-                anime_id: feedback.anime_id,
-                rating: feedback.rating,
-                title: animeData.title,
-                image_url: animeData.images?.jpg?.image_url || PLACEHOLDER_IMAGE,
-                updated_at: feedback.updated_at
-              };
-            } catch (error) {
-              console.error(`Error fetching anime ${feedback.anime_id}:`, error);
-              return {
-                anime_id: feedback.anime_id,
-                rating: feedback.rating,
-                title: `Anime ${feedback.anime_id}`,
-                image_url: PLACEHOLDER_IMAGE,
-                updated_at: feedback.updated_at
-              };
-            }
-          })
+        const enhancedBatch = await Promise.all(
+          currentBatch.map(rating => enhanceAnimeData(rating))
         );
 
-        // Update ratings progressively
         setRatings(prevRatings => {
           const newRatings = [...prevRatings];
-          batchResults.forEach((result, index) => {
-            newRatings[startIndex + index] = result;
+          enhancedBatch.forEach((enhancedRating, idx) => {
+            newRatings[startIdx + idx] = enhancedRating;
           });
           return newRatings;
         });
 
-        // Update progress
-        setLoadingProgress(Math.round((endIndex / userFeedback.length) * 100));
+        setLoadedAnimeCount(endIdx);
 
-        // Adjust batch size based on response time
-        adjustBatchSize(requestStartTime);
-
-        // Load next batch with a small delay
-        if (endIndex < userFeedback.length) {
-          setTimeout(() => loadBatch(endIndex), 100);
+        // Process next batch
+        if (endIdx < userFeedback.length) {
+          setTimeout(() => enhanceBatch(endIdx), 100);
+        } else {
+          setIsLoadingMore(false);
         }
       };
 
-      // Start loading the first batch
-      loadBatch(0);
+      // Start enhancing the first batch
+      enhanceBatch(0);
 
-    } catch (error: any) {
-      console.error('Error fetching ratings:', error);
-      setError(error.message || 'Failed to load ratings');
+    } catch (err) {
+      console.error('Error fetching ratings:', err);
+      setError('Failed to load ratings');
       setLoading(false);
     }
-  }, [user, batchSize, adjustBatchSize, fetchAnimeDetails]);
+  }, [user]);
 
-  // Optimistic update function
-  const updateRating = async (animeId: number, newRating: number) => {
-    if (!user) return;
-
-    // Optimistically update the UI
-    setRatings(prev => 
-      prev.map(rating => 
-        rating.anime_id === animeId 
-          ? { ...rating, rating: newRating, updated_at: new Date().toISOString() }
-          : rating
-      )
-    );
-
-    try {
-      const { error } = await supabase
-        .from('user_feedback')
-        .upsert({
-          user_id: user.id,
-          anime_id: animeId,
-          rating: newRating,
-          updated_at: new Date().toISOString()
-        });
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error updating rating:', error);
-      // Revert the optimistic update on error
-      fetchUserRatings(currentPage);
-    }
-  };
-
-  const renderStars = (rating: number, animeId: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating / 2);
-    const hasHalfStar = rating % 2 >= 1;
-
-    // Full stars with click handlers
-    for (let i = 0; i < 5; i++) {
-      const starRating = (i + 1) * 2;
-      stars.push(
-        <button
-          key={`star-${i}`}
-          onClick={() => updateRating(animeId, starRating)}
-          className="focus:outline-none"
-        >
-          <FaStar 
-            className={i < fullStars ? "text-yellow-400" : "text-gray-300"} 
-          />
-        </button>
-      );
-    }
-
-    return (
-      <div className="flex items-center">
-        {stars}
-        <span className="ml-2 text-gray-600">{rating.toFixed(1)}/10</span>
-      </div>
-    );
-  };
-
-  // Initial load
   useEffect(() => {
-    if (user) {
-      setLoading(true);
-      setLoadingProgress(0);
-      fetchUserRatings(currentPage);
-    } else {
-      setLoading(false);
-    }
-  }, [user, currentPage, fetchUserRatings]);
+    fetchUserRatings(currentPage);
+  }, [currentPage, fetchUserRatings]);
 
-  if (loading && loadingProgress === 0) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-        <div className="text-gray-600">Loading your ratings...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <p className="text-gray-600">Please log in to view your ratings.</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <p className="text-red-500">Error: {error}</p>
-        <button 
-          onClick={() => fetchUserRatings(currentPage)}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-  }
-
-  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    setLoadedAnimeCount(0);
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">
-        My Anime Ratings
-        {loadingProgress > 0 && loadingProgress < 100 && (
-          <span className="text-sm font-normal text-gray-600 ml-2">
-            Loading details... {loadingProgress}%
-          </span>
-        )}
-      </h1>
-      {ratings.length === 0 ? (
-        <p className="text-gray-600">You haven't rated any anime yet.</p>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {ratings.map((anime) => (
-              <div
-                key={anime.anime_id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
-              >
-                <Link to={`/anime/${anime.anime_id}`}>
-                  <img
-                    src={anime.image_url}
-                    alt={anime.title}
-                    className="w-full h-48 object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = PLACEHOLDER_IMAGE;
-                    }}
-                  />
-                  <div className="p-4">
-                    <h2 className="font-semibold text-lg mb-2 truncate">
-                      {anime.title}
-                    </h2>
-                    {renderStars(anime.rating, anime.anime_id)}
-                    {anime.updated_at && (
-                      <div className="text-sm text-gray-500 mt-2">
-                        Updated: {new Date(anime.updated_at).toLocaleDateString()}
-                      </div>
-                    )}
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        {ratings.map((rating, index) => (
+          <div
+            key={rating.anime_id}
+            className={`relative bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 ${
+              rating.isEnhanced ? 'opacity-100' : 'opacity-60'
+            }`}
+          >
+            <Link to={`/anime/${rating.anime_id}`}>
+              <img
+                src={rating.image_url || PLACEHOLDER_IMAGE}
+                alt={rating.title || `Anime ${rating.anime_id}`}
+                className="w-full h-48 object-cover"
+              />
+              <div className="p-4">
+                <h3 className="font-semibold text-gray-800 line-clamp-2">
+                  {rating.title || `Loading...`}
+                </h3>
+                <div className="flex items-center mt-2 flex-wrap">
+                  {Array.from({ length: 10 }).map((_, i) => (
+                    <FaStar
+                      key={i}
+                      className={`w-3 h-3 ${
+                        i < rating.rating ? 'text-yellow-400' : 'text-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+                {rating.updated_at && (
+                  <div className="text-sm text-gray-500 mt-2">
+                    {new Date(rating.updated_at).toLocaleDateString()}
                   </div>
-                </Link>
+                )}
               </div>
-            ))}
+            </Link>
           </div>
+        ))}
+      </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-8 flex justify-center space-x-2">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <span className="px-4 py-2">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
+      {totalItems > ITEMS_PER_PAGE && (
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-4 py-2 mr-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage * ITEMS_PER_PAGE >= totalItems}
+            className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
       )}
     </div>
   );
