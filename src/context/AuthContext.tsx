@@ -65,7 +65,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event, session?.user?.id);
+      console.log('Auth state change:', event, session?.user?.id, {
+        pathname: window.location.pathname,
+        isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      });
       
       // Only proceed if component is still mounted
       if (!mounted) return;
@@ -76,10 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           // Check if we're in the callback page
           if (window.location.pathname === '/auth/callback') {
-            // Let the callback component handle the navigation
+            console.log('In callback page, letting callback handle navigation');
             return;
           }
 
+          console.log('Setting user state after sign in');
           setUser(session.user);
           setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
           localStorage.setItem('anime-search-session', JSON.stringify({
@@ -92,11 +96,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
         }
       } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out');
         setUser(null);
         setSessionExpiry(null);
         localStorage.removeItem('anime-search-session');
         navigate('/login', { replace: true });
       } else if (event === 'TOKEN_REFRESHED') {
+        console.log('Token refreshed');
         if (session && mounted) {
           setUser(session.user);
           setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
@@ -208,18 +214,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      console.log('Starting Google sign in', { isMobile });
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin + '/auth/callback',
           queryParams: {
             access_type: 'offline',
             prompt: 'consent'
-          }
+          },
+          skipBrowserRedirect: false // Ensure redirect happens
         }
       });
       
       if (error) throw error;
+      console.log('Sign in initiated', data);
     } catch (error) {
       console.error('Error signing in with Google:', error);
       throw error;
