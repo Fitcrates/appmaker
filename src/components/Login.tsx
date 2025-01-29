@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -13,6 +13,15 @@ export function Login() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Handle error messages from other components
+  useEffect(() => {
+    if (location.state?.error) {
+      setError(location.state.error);
+      // Clear the error from location state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -24,8 +33,8 @@ export function Login() {
       const destination = location.state?.from || '/';
       navigate(destination, { replace: true });
     } catch (err) {
-      setError('Failed to sign in');
-      console.error(err);
+      console.error('Sign in error:', err);
+      setError('Failed to sign in. Please check your credentials and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -40,11 +49,15 @@ export function Login() {
     try {
       setIsResetting(true);
       setError('');
-      await resetPassword(email);
-      setMessage('Password reset email sent. Please check your inbox.');
+      const { success } = await resetPassword(email);
+      if (success) {
+        setMessage('Password reset email sent. Please check your inbox.');
+      } else {
+        setError('Failed to send password reset email. Please try again.');
+      }
     } catch (err) {
-      setError('Failed to send password reset email');
-      console.error(err);
+      console.error('Reset password error:', err);
+      setError('Failed to send password reset email. Please try again.');
     } finally {
       setIsResetting(false);
     }
@@ -84,6 +97,7 @@ export function Login() {
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -111,7 +125,7 @@ export function Login() {
                 type="button"
                 onClick={handleResetPassword}
                 className="font-medium text-blue-600 hover:text-blue-500"
-                disabled={isResetting || !email}
+                disabled={isResetting || !email || isLoading}
               >
                 {isResetting ? 'Sending...' : 'Forgot your password?'}
               </button>
@@ -122,7 +136,9 @@ export function Login() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
+                isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
