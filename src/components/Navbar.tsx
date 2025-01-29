@@ -146,8 +146,8 @@ export function Navbar() {
 
   return (
     <nav className="bg-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ">
+        <div className="flex justify-between h-16 ">
           <div className="flex items-center">
             {/* Desktop navigation */}
             <div className="flex-shrink-0 flex items-center mr-4">
@@ -240,9 +240,9 @@ export function Navbar() {
       {isOpen && (
         <div className="md:hidden">
           <div className="pt-2 pb-3 space-y-1">
-            <div className="px-3 py-2 text-lg font-bold text-gray-800 border-b border-gray-200 mb-2">
-              AnimeCrates
-            </div>
+          <span className="block px-3 py-2 text-base font-medium text-gray-700">
+                  {user.user_metadata.name || user.email}
+                </span>
             <button
               onClick={() => setIsSearchOpen(true)}
               className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
@@ -263,7 +263,7 @@ export function Navbar() {
               to="/genres"
               className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
             >
-              Explore anime by genre
+              Explore anime
             </Link>
             <Link
               to="/forum"
@@ -286,9 +286,10 @@ export function Navbar() {
                 >
                   My Ratings
                 </Link>
-                <span className="block px-3 py-2 text-base font-medium text-gray-700">
-                  {user.user_metadata.name || user.email}
-                </span>
+                
+                <Link to="/user/settings" className="block px-3 py-2 text-base font-medium text-gray-700">
+                    Account Settings
+                  </Link>
                 <button
                   onClick={handleSignOut}
                   className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
@@ -400,10 +401,10 @@ export function Navbar() {
                 <div className="text-red-600 text-center py-4">{error}</div>
               ) : searchResults.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-6 ">
                     {searchResults.map((anime, index) => (
                       <LazyLoad key={`${anime.mal_id}-${index}`}>
-                       <div className="relative group rounded-lg bg-gray-50 shadow-lg m-2"> {/* card in searchbar modal */}
+                        <div className="relative group rounded-lg bg-gray-50 shadow-lg m-2"> {/* card in searchbar modal */}
                           <img
                             src={anime.images.jpg.image_url}
                             alt={anime.title}
