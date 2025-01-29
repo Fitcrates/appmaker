@@ -238,73 +238,112 @@ export function Navbar() {
 
       {/* Mobile menu */}
       {isOpen && (
-        <div className="md:hidden">
-          <div className="pt-2 pb-3 space-y-1">
-          <span className="block px-3 py-2 text-base font-medium text-gray-700">
-                  {user.user_metadata.name || user.email}
-                </span>
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-              aria-label="Search"
-            >
-              <div className="flex items-center">
-                <Search className="h-5 w-5 mr-2" />
-                <span>Search</span>
-              </div>
-            </button>
-            <Link
-              to="/"
-              className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            >
-              Home
-            </Link>
-            <Link
-              to="/genres"
-              className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            >
-              Explore anime
-            </Link>
-            <Link
-              to="/forum"
-              className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            >
-              Forum
-            </Link>
-
-            {user ? (
-              <>
-                <Link
-                  to="/watchlist"
-                  className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                >
-                  My Watchlist
-                </Link>
-                <Link
-                  to="/ratings"
-                  className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                >
-                  My Ratings
-                </Link>
-                
-                <Link to="/user/settings" className="block px-3 py-2 text-base font-medium text-gray-700">
-                    Account Settings
-                  </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                >
-                  Log Out
-                </button>
-              </>
-            ) : (
+        <div className="md:hidden bg-white fixed inset-0 z-50 overflow-y-auto">
+          <div className="px-4 py-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Menu</h2>
               <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                onClick={() => setIsOpen(false)}
+                className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
               >
-                Log In
+                <X className="h-6 w-6" />
               </button>
-            )}
+            </div>
+
+            <div className="space-y-4">
+              {user && (
+                <div className="pb-4 border-b border-gray-200">
+                  <span className="text-base font-medium text-gray-900">
+                    {user.user_metadata?.name || user.email}
+                  </span>
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  setIsSearchOpen(true);
+                }}
+                className="flex items-center w-full px-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+              >
+                <Search className="h-5 w-5 mr-3" />
+                <span>Search</span>
+              </button>
+
+              <Link
+                to="/"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center px-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+              >
+                Home
+              </Link>
+
+              <Link
+                to="/genres"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center px-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+              >
+                Explore anime
+              </Link>
+
+              <Link
+                to="/forum"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center px-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+              >
+                Forum
+              </Link>
+
+              {user ? (
+                <>
+                  <div className="border-t border-gray-200 pt-4 mt-4">
+                    <Link
+                      to="/user/watchlist"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center px-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                    >
+                      <Bookmark className="h-5 w-5 mr-3" />
+                      My Watchlist
+                    </Link>
+
+                    <Link
+                      to="/user/ratings"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center px-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                    >
+                      <Star className="h-5 w-5 mr-3" />
+                      My Ratings
+                    </Link>
+
+                    <Link
+                      to="/user/settings"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center px-4 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                    >
+                      <Info className="h-5 w-5 mr-3" />
+                      Account Settings
+                    </Link>
+
+                    <button
+                      onClick={handleSignOut}
+                      className="flex items-center w-full px-4 py-2 text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md mt-2"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-base font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md"
+                >
+                  Sign In
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
