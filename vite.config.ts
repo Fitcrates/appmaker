@@ -8,8 +8,24 @@ export default defineConfig({
     exclude: ['lucide-react'],
   },
   server: {
-    port: 5173, // Specify a consistent port
-    host: true, // Listen on all network interfaces
-    strictPort: true, // Don't try other ports if 5173 is taken
+    port: 5173,
+    host: true,
+    strictPort: true,
+  },
+  build: {
+    target: 'esnext',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['react', 'react-dom', 'react-router-dom'],
+          'supabase': ['@supabase/supabase-js'],
+        },
+      },
+    },
+  },
+  preview: {
+    port: 5173,
+    host: true,
   },
 });
