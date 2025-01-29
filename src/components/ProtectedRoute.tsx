@@ -6,29 +6,35 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading, refreshSession } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
-    // Attempt to refresh session when component mounts
+    // Try to refresh session when mounting protected route
     if (!user && !loading) {
-      refreshSession();
+      refreshSession().catch(console.error);
     }
   }, [user, loading, refreshSession]);
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[200px]">
-        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   if (!user) {
-    // Preserve the intended destination in the state
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    // Save the attempted URL for redirecting after login
+    return (
+      <Navigate
+        to="/login"
+        replace={true}
+        state={{ from: location.pathname }}
+      />
+    );
   }
 
   return <>{children}</>;
-};
+}
