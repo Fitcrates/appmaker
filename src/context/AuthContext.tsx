@@ -60,35 +60,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Initialize session from localStorage
   useEffect(() => {
-    const initializeSession = async () => {
-      try {
-        const storedSession = localStorage.getItem('anime-search-session');
-        if (storedSession) {
-          const { user: storedUser, expires_at } = JSON.parse(storedSession);
-          if (new Date(expires_at) > new Date()) {
-            setUser(storedUser);
-            setSessionExpiry(new Date(expires_at));
-          } else {
-            // Session expired, try to refresh
-            await refreshSession();
-          }
-        }
-        setLoading(false);
-      } catch (error) {
-        console.error('Error initializing session:', error);
-        setLoading(false);
-      }
-    };
-
-    initializeSession();
-  }, [refreshSession]);
-
-  // Set up auth state listener
-  useEffect(() => {
+    let mounted = true;
+    
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state change:', event, session?.user?.id);
+      
+      // Only proceed if component is still mounted
+      if (!mounted) return;
       
       if (event === 'SIGNED_IN') {
         setUser(session?.user ?? null);
@@ -105,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('anime-search-session');
         navigate('/login', { replace: true });
       } else if (event === 'TOKEN_REFRESHED') {
-        if (session) {
+        if (session && mounted) {
           setUser(session.user);
           setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
           localStorage.setItem('anime-search-session', JSON.stringify({
@@ -115,13 +95,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
       
-      setLoading(false);
+      if (mounted) {
+        setLoading(false);
+      }
     });
 
+    // Check initial session
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (mounted) {
+          if (session) {
+            setUser(session.user);
+            setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+          } else {
+            setUser(null);
+            setSessionExpiry(null);
+          }
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    checkSession();
+
+    // Cleanup function
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, [navigate]);
+
+  // Session expiry checker
+  useEffect(() => {
+    if (!user || !sessionExpiry) return;
+
+    const checkInterval = setInterval(() => {
+      if (sessionExpiry && new Date() > sessionExpiry) {
+        signOut().catch(console.error);
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(checkInterval);
+  }, [user, sessionExpiry]);
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
