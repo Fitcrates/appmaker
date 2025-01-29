@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { User, SupabaseClient } from '@supabase/supabase-js';
-import { supabase, queries } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -34,191 +35,160 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [sessionExpiry, setSessionExpiry] = useState<Date | null>(null);
   const sessionCheckInterval = useRef<NodeJS.Timeout>();
   const lastSessionCheck = useRef<number>(0);
-  const authStateSubscription = useRef<{ subscription?: { unsubscribe: () => void } }>({});
+  const navigate = useNavigate();
 
-  const checkAndRefreshSession = useCallback(async () => {
-    if (!sessionExpiry) return;
-
-    const now = new Date();
-    const timeUntilExpiry = sessionExpiry.getTime() - now.getTime();
-
-    // Only refresh if we're within the threshold and haven't checked recently
-    if (timeUntilExpiry <= REFRESH_THRESHOLD && Date.now() - lastSessionCheck.current > 30000) {
-      lastSessionCheck.current = Date.now();
-      try {
-        const { data: { session }, error } = await supabase.auth.refreshSession();
-        if (error) throw error;
-        if (session) {
-          setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
-          setUser(session.user);
-        }
-      } catch (error) {
-        console.error('Error refreshing session:', error);
-        await signOut();
-      }
-    }
-  }, [sessionExpiry]);
-
-  // Handle visibility change for mobile browsers
-  useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('Error getting session on visibility change:', error);
-          return;
-        }
-        
-        if (session) {
-          setUser(session.user);
-          setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
-        } else if (user) {
-          // If we had a user but no session, try to refresh
-          await checkAndRefreshSession();
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [user, checkAndRefreshSession]);
-
-  // Set up auth state listener once on mount
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      if (session) {
-        setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
-      } else {
-        setSessionExpiry(null);
-      }
-      setLoading(false);
-    });
-
-    authStateSubscription.current.subscription = subscription;
-
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (!error && session) {
-        setUser(session.user);
-        setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
-      }
-      setLoading(false);
-    });
-
-    return () => {
-      if (authStateSubscription.current.subscription) {
-        authStateSubscription.current.subscription.unsubscribe();
-      }
-    };
-  }, []);
-
-  // Refresh session handler exposed to components
+  // Enhanced session refresh
   const refreshSession = useCallback(async () => {
     try {
       const { data: { session }, error } = await supabase.auth.refreshSession();
-      if (error) throw error;
+      if (error) {
+        console.error('Session refresh error:', error);
+        throw error;
+      }
       if (session) {
         setUser(session.user);
         setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+        // Store session in localStorage for persistence
+        localStorage.setItem('anime-search-session', JSON.stringify({
+          user: session.user,
+          expires_at: new Date(Date.now() + SESSION_TIMEOUT).toISOString()
+        }));
       }
     } catch (error) {
       console.error('Error in refreshSession:', error);
+      await signOut();
     }
   }, []);
 
+  // Initialize session from localStorage
+  useEffect(() => {
+    const initializeSession = async () => {
+      try {
+        const storedSession = localStorage.getItem('anime-search-session');
+        if (storedSession) {
+          const { user: storedUser, expires_at } = JSON.parse(storedSession);
+          if (new Date(expires_at) > new Date()) {
+            setUser(storedUser);
+            setSessionExpiry(new Date(expires_at));
+          } else {
+            // Session expired, try to refresh
+            await refreshSession();
+          }
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error('Error initializing session:', error);
+        setLoading(false);
+      }
+    };
+
+    initializeSession();
+  }, [refreshSession]);
+
+  // Set up auth state listener
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user?.id);
+      
+      if (event === 'SIGNED_IN') {
+        setUser(session?.user ?? null);
+        if (session) {
+          setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+          localStorage.setItem('anime-search-session', JSON.stringify({
+            user: session.user,
+            expires_at: new Date(Date.now() + SESSION_TIMEOUT).toISOString()
+          }));
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setSessionExpiry(null);
+        localStorage.removeItem('anime-search-session');
+        navigate('/login', { replace: true });
+      } else if (event === 'TOKEN_REFRESHED') {
+        if (session) {
+          setUser(session.user);
+          setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+          localStorage.setItem('anime-search-session', JSON.stringify({
+            user: session.user,
+            expires_at: new Date(Date.now() + SESSION_TIMEOUT).toISOString()
+          }));
+        }
+      }
+      
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      // First check if the email already exists
-      const { data: existingUsers, error: searchError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('email', email)
-        .limit(1);
-
-      if (searchError) throw searchError;
-
-      if (existingUsers && existingUsers.length > 0) {
-        throw new Error('An account with this email already exists. Please try logging in or reset your password.');
-      }
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            name: name,
+            name,
           },
         },
       });
 
       if (error) throw error;
 
-      // Create user profile in users table
-      if (data.user) {
-        const { error: profileError } = await supabase.from('users').insert([
-          {
-            id: data.user.id,
-            email: email,
-            name: name,
-          },
-        ]);
-
-        if (profileError) throw profileError;
+      if (data?.user) {
+        return {
+          message: 'Registration successful! Please check your email for verification.',
+          redirectTo: '/login',
+        };
+      } else {
+        throw new Error('Registration failed');
       }
-
-      return data;
     } catch (error: any) {
-      console.error('Signup process error:', error);
+      console.error('Error in signUp:', error);
       throw error;
     }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.toLowerCase().trim(),
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      if (error.message.includes('Email not confirmed')) {
-        throw new Error(
-          'Please verify your email before signing in. Check your inbox for the verification link.'
-        );
-      }
-      if (error.status === 400) {
-        throw new Error('Invalid email or password. Please try again.');
-      }
+      if (error) throw error;
+      if (!data.session) throw new Error('No session after sign in');
+
+      setUser(data.session.user);
+      setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+      localStorage.setItem('anime-search-session', JSON.stringify({
+        user: data.session.user,
+        expires_at: new Date(Date.now() + SESSION_TIMEOUT).toISOString()
+      }));
+    } catch (error: any) {
+      console.error('Error in signIn:', error);
       throw error;
     }
-
-    if (!data.user) {
-      throw new Error('No user data returned from authentication');
-    }
-
-    return data;
   };
 
   const signInWithGoogle = async () => {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
+          redirectTo: window.location.origin + '/auth/callback',
           queryParams: {
             access_type: 'offline',
-            prompt: 'select_account',
-            client_name: 'AnimeSearch',
+            prompt: 'consent',
           },
-          redirectTo: `${window.location.origin}/auth/callback`,
-        }
+        },
       });
 
       if (error) throw error;
-      return data;
     } catch (error: any) {
-      console.error('Google sign in error:', error);
+      console.error('Error in signInWithGoogle:', error);
       throw error;
     }
   };
@@ -227,36 +197,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-
-      // Clear user state
+      
       setUser(null);
       setSessionExpiry(null);
-
-      // Clear all caches
-      queries.clearCache(); // Clear API request cache
-      localStorage.clear(); // Clear local storage
-      sessionStorage.clear(); // Clear session storage
-      
-      // Clear any IndexedDB data
-      const databases = await window.indexedDB.databases();
-      databases.forEach(db => {
-        if (db.name) window.indexedDB.deleteDatabase(db.name);
-      });
-
-      // Clear service worker caches if any
-      if ('caches' in window) {
-        try {
-          const cacheKeys = await caches.keys();
-          await Promise.all(cacheKeys.map(key => caches.delete(key)));
-        } catch (e) {
-          console.error('Error clearing caches:', e);
-        }
-      }
-
-      // Redirect to home page
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Error signing out:', error);
+      localStorage.removeItem('anime-search-session');
+      navigate('/login', { replace: true });
+    } catch (error: any) {
+      console.error('Error in signOut:', error);
       throw error;
     }
   };
@@ -426,11 +373,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshSession,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
