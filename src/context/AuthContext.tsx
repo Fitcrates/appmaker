@@ -71,13 +71,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
       
       if (event === 'SIGNED_IN') {
-        setUser(session?.user ?? null);
-        if (session) {
+        if (!session) return;
+        
+        try {
+          // Check if we're in the callback page
+          if (window.location.pathname === '/auth/callback') {
+            // Let the callback component handle the navigation
+            return;
+          }
+
+          setUser(session.user);
           setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
           localStorage.setItem('anime-search-session', JSON.stringify({
             user: session.user,
             expires_at: new Date(Date.now() + SESSION_TIMEOUT).toISOString()
           }));
+        } catch (error) {
+          console.error('Error in SIGNED_IN:', error);
+          setUser(session.user);
+          setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -202,14 +214,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           redirectTo: window.location.origin + '/auth/callback',
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
+            prompt: 'consent'
+          }
+        }
       });
-
+      
       if (error) throw error;
-    } catch (error: any) {
-      console.error('Error in signInWithGoogle:', error);
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
       throw error;
     }
   };
