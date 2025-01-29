@@ -201,7 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setSessionExpiry(null);
       localStorage.removeItem('anime-search-session');
-      navigate('/login', { replace: true });
+      navigate('/', { replace: true });
     } catch (error: any) {
       console.error('Error in signOut:', error);
       throw error;
