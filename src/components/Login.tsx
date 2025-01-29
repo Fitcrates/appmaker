@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -9,6 +10,8 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const { signIn, resetPassword } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,6 +19,10 @@ export function Login() {
       setIsLoading(true);
       setError('');
       await signIn(email, password);
+      
+      // Navigate to the intended destination or home
+      const destination = location.state?.from || '/';
+      navigate(destination, { replace: true });
     } catch (err) {
       setError('Failed to sign in');
       console.error(err);
@@ -93,6 +100,7 @@ export function Login() {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -103,7 +111,7 @@ export function Login() {
                 type="button"
                 onClick={handleResetPassword}
                 className="font-medium text-blue-600 hover:text-blue-500"
-                disabled={isResetting}
+                disabled={isResetting || !email}
               >
                 {isResetting ? 'Sending...' : 'Forgot your password?'}
               </button>
