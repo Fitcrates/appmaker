@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) throw error;
         if (session) {
           setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+          setUser(session.user);
         }
       } catch (error) {
         console.error('Error refreshing session:', error);
@@ -58,9 +59,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [sessionExpiry]);
 
+  // Handle visibility change for mobile browsers
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Error getting session on visibility change:', error);
+          return;
+        }
+        
+        if (session) {
+          setUser(session.user);
+          setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+        } else if (user) {
+          // If we had a user but no session, try to refresh
+          await checkAndRefreshSession();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, checkAndRefreshSession]);
+
   // Set up auth state listener once on mount
   useEffect(() => {
-    // Set up auth state listener only once
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
       if (session) {
@@ -73,49 +99,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     authStateSubscription.current.subscription = subscription;
 
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!error && session) {
+        setUser(session.user);
+        setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+      }
+      setLoading(false);
+    });
+
     return () => {
       if (authStateSubscription.current.subscription) {
         authStateSubscription.current.subscription.unsubscribe();
       }
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
-  // Set up session check interval
-  useEffect(() => {
-    // Initial session check
-    const checkSession = async () => {
-      if (Date.now() - lastSessionCheck.current < 30000) return;
-      
-      lastSessionCheck.current = Date.now();
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        
-        setUser(session?.user ?? null);
-        if (session) {
-          setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
-        } else {
-          setSessionExpiry(null);
-        }
-      } catch (error) {
-        setUser(null);
-        setSessionExpiry(null);
-      } finally {
-        setLoading(false);
+  // Refresh session handler exposed to components
+  const refreshSession = useCallback(async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.refreshSession();
+      if (error) throw error;
+      if (session) {
+        setUser(session.user);
+        setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
       }
-    };
-
-    checkSession();
-
-    // Set up session check interval
-    sessionCheckInterval.current = setInterval(checkAndRefreshSession, 300000); // Check every 5 minutes
-
-    return () => {
-      if (sessionCheckInterval.current) {
-        clearInterval(sessionCheckInterval.current);
-      }
-    };
-  }, [checkAndRefreshSession]);
+    } catch (error) {
+      console.error('Error in refreshSession:', error);
+    }
+  }, []);
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
@@ -395,19 +407,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error('Error deleting account:', error);
       throw error;
-    }
-  };
-
-  const refreshSession = async () => {
-    try {
-      const { data: { session }, error } = await supabase.auth.refreshSession();
-      if (error) throw error;
-      if (session) {
-        setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
-      }
-    } catch (error) {
-      console.error('Error refreshing session:', error);
-      await signOut();
     }
   };
 
