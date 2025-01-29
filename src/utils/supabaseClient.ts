@@ -7,6 +7,28 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
+// Create Supabase client with optimized configuration for mobile
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: window?.localStorage,
+    flowType: 'pkce',  // Use PKCE flow for better mobile support
+    debug: true,  // Enable debug logs to help troubleshoot
+    storageKey: 'anime-search-auth',  // Custom storage key
+    cookieOptions: {
+      secure: window.location.protocol === 'https:',
+      sameSite: 'Lax'
+    }
+  },
+  global: {
+    headers: {
+      'x-client-info': 'AnimeSearch@1.0.0',
+    },
+  },
+});
+
 // Request management
 const requestCache: { [key: string]: { promise: Promise<any>; timestamp: number } } = {};
 const CACHE_DURATION = 2000; // 2 seconds
@@ -24,21 +46,6 @@ async function retryRequest<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
     throw error;
   }
 }
-
-// Create Supabase client with custom fetch implementation
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: localStorage,
-  },
-  global: {
-    headers: {
-      'x-client-info': 'AnimeSearch@1.0.0',
-    },
-  },
-});
 
 // Cache-aware query functions
 export const queries = {
