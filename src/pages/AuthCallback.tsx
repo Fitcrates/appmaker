@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 
 function AuthCallback() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState(0);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -12,46 +14,62 @@ function AuthCallback() {
 
     const checkSession = async () => {
       try {
+        // First try to get the session from the URL (for mobile browsers)
+        const hashParams = new URLSearchParams(location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+
+        if (accessToken && refreshToken) {
+          const { data: { session }, error: setSessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (setSessionError) throw setSessionError;
+          if (session) {
+            navigate('/', {
+              replace: true,
+              state: { message: 'Successfully signed in!' }
+            });
+            return;
+          }
+        }
+
+        // If no tokens in URL, try to get the current session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (!mounted) return;
 
         if (sessionError) {
           console.error('Session error:', sessionError);
-          setError('Failed to get session');
-          navigate('/login', {
-            replace: true,
-            state: { error: 'Authentication failed. Please try again.' }
-          });
-          return;
+          throw sessionError;
         }
 
         if (session) {
-          // Successful authentication
           navigate('/', {
             replace: true,
             state: { message: 'Successfully signed in!' }
           });
+        } else if (attempts < 3) {
+          // Retry a few times for mobile browsers
+          setAttempts(prev => prev + 1);
+          timeoutId = setTimeout(checkSession, 2000);
         } else {
-          // No session found
-          navigate('/login', {
-            replace: true,
-            state: { error: 'Authentication failed. Please try again.' }
-          });
+          throw new Error('No session found after multiple attempts');
         }
       } catch (err) {
         if (!mounted) return;
         console.error('Auth callback error:', err);
-        setError('An unexpected error occurred');
+        setError('Authentication failed');
         navigate('/login', {
           replace: true,
-          state: { error: 'An unexpected error occurred. Please try again.' }
+          state: { error: 'Authentication failed. Please try again.' }
         });
       }
     };
 
     // Set a timeout to redirect to login if it takes too long
-    timeoutId = setTimeout(() => {
+    const maxTimeout = setTimeout(() => {
       if (mounted) {
         console.error('Auth callback timeout');
         setError('Authentication timed out');
@@ -60,15 +78,16 @@ function AuthCallback() {
           state: { error: 'Authentication timed out. Please try again.' }
         });
       }
-    }, 10000); // 10 second timeout
+    }, 15000); // 15 second timeout
 
     checkSession();
 
     return () => {
       mounted = false;
       clearTimeout(timeoutId);
+      clearTimeout(maxTimeout);
     };
-  }, [navigate]);
+  }, [navigate, location, attempts]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -78,7 +97,9 @@ function AuthCallback() {
         ) : (
           <>
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Completing authentication...</p>
+            <p className="mt-4 text-gray-600">
+              {attempts > 0 ? `Completing authentication (attempt ${attempts + 1}/4)...` : 'Completing authentication...'}
+            </p>
           </>
         )}
       </div>
