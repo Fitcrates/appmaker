@@ -1,550 +1,191 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
-import { Star, ChevronDown, X } from 'lucide-react';
-import { LazyLoad } from './LazyLoad';
-import { fetchFromAPI, fetchAnimeData, fetchAnimeGenres, RequestPriority } from '../utils/api';
-import { Tooltip } from './ui/Tooltip';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 
-// Cache for anime details
-const animeCache: { [key: number]: { data: any; timestamp: number } } = {};
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
-
-interface WatchlistAnime {
-  id: number;
-  anime_id: number;
-  anime_title: string;
-  anime_image: string;
-  status?: 'planning' | 'watching' | 'completed' | 'dropped';
-  genres?: { mal_id: number; name: string }[];
-  isEnhanced?: boolean;
-}
-
-interface Genre {
-  mal_id: number;
-  name: string;
-}
-
-const statusOptions = [
-  { id: 'planning', label: 'Planning to Watch' },
-  { id: 'watching', label: 'Currently Watching' },
-  { id: 'completed', label: 'Completed' },
-  { id: 'dropped', label: 'Dropped' }
-] as const;
-
-export function AnimeToWatch() {
-  const { user, supabase } = useAuth();
-  const [watchlist, setWatchlist] = useState<WatchlistAnime[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [genres, setGenres] = useState<Genre[]>([]);
-  const [selectedGenres, setSelectedGenres] = useState<Genre[]>([]);
-  const [isGenreDropdownOpen, setIsGenreDropdownOpen] = useState(false);
-  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatuses, setSelectedStatuses] = useState<typeof statusOptions[number]['id'][]>([]);
-  const [allGenres, setAllGenres] = useState<Genre[]>([]);
-  const [loadedAnimeCount, setLoadedAnimeCount] = useState(0);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const BATCH_SIZE = 3;
+  const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const { signIn, signInWithGoogle, resetPassword } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const genreDropdownRef = useRef<HTMLDivElement>(null);
-  const statusDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Enhance anime data with API details if needed
-  const enhanceAnimeData = async (anime: WatchlistAnime) => {
-    try {
-      // If we already have the enhanced data, return as is
-      if (anime.anime_title && anime.anime_image && anime.isEnhanced) {
-        return anime;
-      }
-
-      // Check cache first
-      const now = Date.now();
-      const cached = animeCache[anime.anime_id];
-      if (cached && now - cached.timestamp < CACHE_DURATION) {
-        const { data } = cached;
-        return {
-          ...anime,
-          anime_title: data.title,
-          anime_image: data.images.jpg.image_url,
-          genres: data.genres,
-          isEnhanced: true
-        };
-      }
-
-      // Fetch from API
-      const { data: animeData } = await fetchFromAPI(
-        `/anime/${anime.anime_id}`,
-        {},
-        RequestPriority.LOW
-      );
-
-      if (!animeData) {
-        throw new Error('No data received from API');
-      }
-
-      // Update cache
-      animeCache[anime.anime_id] = {
-        data: animeData,
-        timestamp: now
-      };
-
-      // Update database with the new information
-      const { error: updateError } = await supabase
-        .from('anime_watchlist')
-        .update({
-          anime_title: animeData.title,
-          anime_image: animeData.images.jpg.image_url
-        })
-        .eq('id', anime.id);
-
-      if (updateError) {
-        console.error('Error updating anime data:', updateError);
-      }
-
-      return {
-        ...anime,
-        anime_title: animeData.title,
-        anime_image: animeData.images.jpg.image_url,
-        genres: animeData.genres,
-        isEnhanced: true
-      };
-    } catch (error) {
-      console.error(`Error enhancing anime ${anime.anime_id}:`, error);
-      return anime;
+  // Handle error messages from other components
+  useEffect(() => {
+    if (location.state?.error) {
+      setError(location.state.error);
+      // Clear the error from location state
+      window.history.replaceState({}, document.title);
     }
-  };
+  }, [location.state]);
 
-  // Fetch watchlist with progressive enhancement
-  const fetchWatchlist = async () => {
-    if (!user || !supabase) {
-      setIsLoading(false);
-      return;
-    }
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
       setIsLoading(true);
       setError('');
+      await signIn(email, password);
       
-      const { data: watchlistData, error: watchlistError } = await supabase
-        .from('anime_watchlist')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (watchlistError) throw watchlistError;
-
-      // Filter out invalid entries and enhance data progressively
-      const validWatchlistData = (watchlistData || [])
-        .filter(item => item.anime_id)
-        .map(item => ({
-          ...item,
-          anime_title: item.anime_title || '',
-          anime_image: item.anime_image || ''
-        }));
-
-      setWatchlist(validWatchlistData);
-
-      // Enhance data in batches
-      for (let i = 0; i < validWatchlistData.length; i += BATCH_SIZE) {
-        const batch = validWatchlistData.slice(i, i + BATCH_SIZE);
-        const enhancedBatch = await Promise.all(
-          batch.map(anime => enhanceAnimeData(anime))
-        );
-
-        setWatchlist(prev => {
-          const updated = [...prev];
-          enhancedBatch.forEach((enhanced, index) => {
-            updated[i + index] = enhanced;
-          });
-          return updated;
-        });
-
-        setLoadedAnimeCount(prev => prev + enhancedBatch.length);
-      }
-    } catch (error: any) {
-      setError(error.message);
+      // Navigate to the intended destination or home
+      const destination = location.state?.from || '/';
+      navigate(destination, { replace: true });
+    } catch (err) {
+      console.error('Sign in error:', err);
+      setError('Failed to sign in. Please check your credentials and try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle click outside dropdowns
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (genreDropdownRef.current && !genreDropdownRef.current.contains(event.target as Node)) {
-        setIsGenreDropdownOpen(false);
-      }
-      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
-        setIsStatusDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Fetch genres
-  const fetchGenres = async () => {
+  const handleGoogleSignIn = async () => {
     try {
-      const genres = await fetchAnimeGenres();
-      setAllGenres(genres);
-    } catch (error) {
-      console.error('Error fetching genres:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchGenres();
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    fetchWatchlist();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.id, supabase]);
-
-  const filteredGenres = allGenres.filter(genre =>
-    genre.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredWatchlist = watchlist.filter(anime => {
-    const matchesGenres = selectedGenres.length === 0 || 
-      selectedGenres.every(selectedGenre =>
-        anime.genres?.some(genre => genre.mal_id === selectedGenre.mal_id)
-      );
-    
-    const matchesStatus = selectedStatuses.length === 0 ||
-      selectedStatuses.includes(anime.status);
-
-    return matchesGenres && matchesStatus;
-  });
-
-  const removeFromWatchlist = async (animeId: number) => {
-    if (!user || !supabase) return;
-
-    try {
-      const { error } = await supabase
-        .from('anime_watchlist')
-        .delete()
-        .eq('anime_id', animeId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      setWatchlist(prev => prev.filter(item => item.anime_id !== animeId));
+      setIsLoading(true);
+      setError('');
+      await signInWithGoogle();
+      // The redirect will be handled by the OAuth callback
     } catch (err) {
-      console.error('Error removing from watchlist:', err);
-      setError('Failed to remove from watchlist');
+      console.error('Google sign in error:', err);
+      setError('Failed to sign in with Google. Please try again.');
+      setIsLoading(false);
     }
   };
 
-  const updateAnimeStatus = async (animeId: number, newStatus: WatchlistAnime['status']) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
     try {
-      const { error } = await supabase
-        .from('anime_watchlist')
-        .update({ status: newStatus })
-        .eq('id', animeId);
-
-      if (error) throw error;
-
-      setWatchlist(watchlist.map(anime => 
-        anime.id === animeId ? { ...anime, status: newStatus } : anime
-      ));
+      setIsResetting(true);
+      setError('');
+      const { success } = await resetPassword(email);
+      if (success) {
+        setMessage('Password reset email sent. Please check your inbox.');
+      } else {
+        setError('Failed to send password reset email. Please try again.');
+      }
     } catch (err) {
-      console.error('Error updating status:', err);
-      setError('Failed to update status');
+      console.error('Reset password error:', err);
+      setError('Failed to send password reset email. Please try again.');
+    } finally {
+      setIsResetting(false);
     }
   };
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Please Sign In</h2>
-          <p className="text-gray-600">You need to be signed in to view your watchlist.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 mb-4">⚠️</div>
-          <p className="text-gray-600">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 text-blue-500 hover:text-blue-600"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">My Watchlist</h1>
-      
-      {error && (
-        <div className="text-red-500 mb-4">{error}</div>
-      )}
-
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6">
-        
-        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-          {/* Status Filter Dropdown */}
-          <div className="relative w-full md:w-auto z-50" ref={statusDropdownRef}>
-            <button
-              onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-              className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-white border rounded-lg shadow-sm hover:bg-gray-50"
-            >
-              Filter by Status
-              <ChevronDown className="w-4 h-4" />
-            </button>
-
-            {isStatusDropdownOpen && (
-              <div className="absolute left-0 md:left-auto right-0 top-full mt-2 w-full md:w-64 bg-white border rounded-lg shadow-lg">
-                {selectedStatuses.length > 0 && (
-                  <div className="px-2 py-2 border-b flex flex-wrap gap-1">
-                    {selectedStatuses.map((status) => (
-                      <span
-                        key={status}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                      >
-                        {statusOptions.find(opt => opt.id === status)?.label}
-                        <button
-                          onClick={() => setSelectedStatuses(selectedStatuses.filter(s => s !== status))}
-                          className="hover:text-blue-600"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="max-h-64 overflow-y-auto">
-                  {statusOptions.map((status) => (
-                    <div
-                      key={status.id}
-                      className="px-4 py-2 hover:bg-gray-100"
-                    >
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedStatuses.includes(status.id)}
-                          onChange={() => {
-                            if (selectedStatuses.includes(status.id)) {
-                              setSelectedStatuses(selectedStatuses.filter(s => s !== status.id));
-                            } else {
-                              setSelectedStatuses([...selectedStatuses, status.id]);
-                            }
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm">{status.label}</span>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="p-2 border-t flex justify-between">
-                  <button
-                    onClick={() => setSelectedStatuses([])}
-                    className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-                  >
-                    Clear All
-                  </button>
-                  <button
-                    onClick={() => setIsStatusDropdownOpen(false)}
-                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    OK
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Genre Filter Dropdown */}
-          <div className="relative w-full md:w-auto z-50" ref={genreDropdownRef}>
-            <button
-              onClick={() => setIsGenreDropdownOpen(!isGenreDropdownOpen)}
-              className="w-full z-50 md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-white border rounded-lg shadow-sm hover:bg-gray-50"
-            >
-              Filter by Genre
-              <ChevronDown className="w-4 h-4" />
-            </button>
-
-            {isGenreDropdownOpen && (
-              <div className="absolute left-0 md:left-auto right-0 top-full mt-2 w-full md:w-64 bg-white border rounded-lg shadow-lg">
-                <div className="p-2 border-b">
-                  <input
-                    type="text"
-                    placeholder="Search genres..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md"
-                  />
-                </div>
-
-                <div className="max-h-64 overflow-y-auto z-40">
-                  {selectedGenres.length > 0 && (
-                    <div className="px-2 py-2 border-b flex flex-wrap gap-1">
-                      {selectedGenres.map((genre) => (
-                        <span
-                          key={genre.mal_id}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                        >
-                          {genre.name}
-                          <button
-                            onClick={() => setSelectedGenres(selectedGenres.filter(g => g.mal_id !== genre.mal_id))}
-                            className="hover:text-blue-600"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {filteredGenres.map((genre) => (
-                    <div
-                      key={genre.mal_id}
-                      className="px-4 py-2 hover:bg-gray-100"
-                    >
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedGenres.some(g => g.mal_id === genre.mal_id)}
-                          onChange={() => {
-                            if (selectedGenres.some(g => g.mal_id === genre.mal_id)) {
-                              setSelectedGenres(selectedGenres.filter(g => g.mal_id !== genre.mal_id));
-                            } else {
-                              setSelectedGenres([...selectedGenres, genre]);
-                            }
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm">{genre.name}</span>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="p-2 border-t flex justify-between">
-                  <button
-                    onClick={() => setSelectedGenres([])}
-                    className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-                  >
-                    Clear All
-                  </button>
-                  <button
-                    onClick={() => setIsGenreDropdownOpen(false)}
-                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    OK
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Sign in to your account
+          </h2>
         </div>
         
         {error && (
-          <div className="bg-red-50 text-red-700 p-4 rounded mb-4">
-            {error}
+          <div className="rounded-md bg-red-50 p-4 mb-4">
+            <div className="text-sm text-red-700">{error}</div>
           </div>
         )}
-      </div>
+        
+        {message && (
+          <div className="rounded-md bg-green-50 p-4 mb-4">
+            <div className="text-sm text-green-700">{message}</div>
+          </div>
+        )}
 
-      {isLoading ? (
-        <div className="flex justify-center items-center min-h-[200px] ">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : error ? (
-        <div className="text-red-500 text-center">{error}</div>
-      ) : watchlist.length === 0 ? (
-        <div className="text-center text-gray-500">
-          Your watchlist is empty. Start adding some anime!
-        </div>
-      ) : filteredWatchlist.length === 0 ? (
-        <div className="text-center text-gray-500">
-          No anime found matching your filters
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {filteredWatchlist.map((anime, index) => (
-            <div key={anime.id} className={`relative ${index >= loadedAnimeCount ? 'opacity-50' : ''}`}>
-              <Link to={`/anime/${anime.anime_id}`} className="block">
-                <div className="relative pt-[140%]">
-                  <img
-                    src={anime.anime_image}
-                    alt={anime.anime_title}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    loading="lazy"
-                    onError={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      img.src = 'https://via.placeholder.com/225x318?text=No+Image';
-                    }}
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 line-clamp-2">
-                    {anime.anime_title}
-                  </h3>
-                </div>
-              </Link>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <label htmlFor="email-address" className="sr-only">
+                Email address
+              </label>
+              <input
+                id="email-address"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+          </div>
 
-              <div className="px-4 pb-4">
-                <select
-                  value={anime.status || 'planning'}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    updateAnimeStatus(anime.id, e.target.value as WatchlistAnime['status']);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500"
-                >
-                  <option value="planning">Planning</option>
-                  <option value="watching">Watching</option>
-                  <option value="completed">Completed</option>
-                  <option value="dropped">Dropped</option>
-                </select>
-              </div>
+          <div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              {isLoading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </div>
 
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
               <button
-                onClick={() => removeFromWatchlist(anime.anime_id)}
-                className="absolute top-2 right-2 bg-red-500 bg-opacity-70 hover:bg-opacity-100 text-white p-2 rounded-full transition-all duration-200"
-                title="Remove from watchlist"
+                type="button"
+                onClick={handleResetPassword}
+                className="font-medium text-blue-600 hover:text-blue-500"
+                disabled={isResetting || !email || isLoading}
               >
-                <X className="w-4 h-4" />
+                {isResetting ? 'Sending...' : 'Forgot your password?'}
               </button>
             </div>
-          ))}
+          </div>
+        </form>
+
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-gray-50 text-gray-500">Or continue with</span>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                <path
+                  fill="currentColor"
+                  d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"
+                />
+              </svg>
+              Sign in with Google
+            </button>
+          </div>
         </div>
-      )}
-      {isLoadingMore && (
-        <div className="flex justify-center items-center mt-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
