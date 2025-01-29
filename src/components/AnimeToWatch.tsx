@@ -3,8 +3,12 @@ import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { Star, ChevronDown, X } from 'lucide-react';
 import { LazyLoad } from './LazyLoad';
-import { fetchFromAPI, fetchAnimeData, fetchAnimeGenres } from '../utils/api';
+import { fetchFromAPI, fetchAnimeData, fetchAnimeGenres, RequestPriority } from '../utils/api';
 import { Tooltip } from './ui/Tooltip';
+
+// Cache for anime details
+const animeCache: { [key: number]: { data: any; timestamp: number } } = {};
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 interface WatchlistAnime {
   id: number;
@@ -13,6 +17,7 @@ interface WatchlistAnime {
   anime_image: string;
   status?: 'planning' | 'watching' | 'completed' | 'dropped';
   genres?: { mal_id: number; name: string }[];
+  isEnhanced?: boolean;
 }
 
 interface Genre {
@@ -46,6 +51,125 @@ export function AnimeToWatch() {
   const genreDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Enhance anime data with API details if needed
+  const enhanceAnimeData = async (anime: WatchlistAnime) => {
+    try {
+      // If we already have the enhanced data, return as is
+      if (anime.anime_title && anime.anime_image && anime.isEnhanced) {
+        return anime;
+      }
+
+      // Check cache first
+      const now = Date.now();
+      const cached = animeCache[anime.anime_id];
+      if (cached && now - cached.timestamp < CACHE_DURATION) {
+        const { data } = cached;
+        return {
+          ...anime,
+          anime_title: data.title,
+          anime_image: data.images.jpg.image_url,
+          genres: data.genres,
+          isEnhanced: true
+        };
+      }
+
+      // Fetch from API
+      const { data: animeData } = await fetchFromAPI(
+        `/anime/${anime.anime_id}`,
+        {},
+        RequestPriority.LOW
+      );
+
+      if (!animeData) {
+        throw new Error('No data received from API');
+      }
+
+      // Update cache
+      animeCache[anime.anime_id] = {
+        data: animeData,
+        timestamp: now
+      };
+
+      // Update database with the new information
+      const { error: updateError } = await supabase
+        .from('anime_watchlist')
+        .update({
+          anime_title: animeData.title,
+          anime_image: animeData.images.jpg.image_url
+        })
+        .eq('id', anime.id);
+
+      if (updateError) {
+        console.error('Error updating anime data:', updateError);
+      }
+
+      return {
+        ...anime,
+        anime_title: animeData.title,
+        anime_image: animeData.images.jpg.image_url,
+        genres: animeData.genres,
+        isEnhanced: true
+      };
+    } catch (error) {
+      console.error(`Error enhancing anime ${anime.anime_id}:`, error);
+      return anime;
+    }
+  };
+
+  // Fetch watchlist with progressive enhancement
+  const fetchWatchlist = async () => {
+    if (!user || !supabase) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      const { data: watchlistData, error: watchlistError } = await supabase
+        .from('anime_watchlist')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (watchlistError) throw watchlistError;
+
+      // Filter out invalid entries and enhance data progressively
+      const validWatchlistData = (watchlistData || [])
+        .filter(item => item.anime_id)
+        .map(item => ({
+          ...item,
+          anime_title: item.anime_title || '',
+          anime_image: item.anime_image || ''
+        }));
+
+      setWatchlist(validWatchlistData);
+
+      // Enhance data in batches
+      for (let i = 0; i < validWatchlistData.length; i += BATCH_SIZE) {
+        const batch = validWatchlistData.slice(i, i + BATCH_SIZE);
+        const enhancedBatch = await Promise.all(
+          batch.map(anime => enhanceAnimeData(anime))
+        );
+
+        setWatchlist(prev => {
+          const updated = [...prev];
+          enhancedBatch.forEach((enhanced, index) => {
+            updated[i + index] = enhanced;
+          });
+          return updated;
+        });
+
+        setLoadedAnimeCount(prev => prev + enhancedBatch.length);
+      }
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Handle click outside dropdowns
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -76,98 +200,6 @@ export function AnimeToWatch() {
 
   useEffect(() => {
     let isMounted = true;
-
-    const fetchWatchlist = async () => {
-      if (!user || !supabase) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        setError('');
-        
-        const { data: watchlistData, error: watchlistError } = await supabase
-          .from('anime_watchlist')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (watchlistError) throw watchlistError;
-
-        // Ensure we have all required fields
-        const validWatchlistData = (watchlistData || []).filter(item => 
-          item.anime_id && item.anime_title && item.anime_image
-        );
-
-        if (!isMounted) return;
-        console.log('Watchlist data:', validWatchlistData);
-
-        // Initialize watchlist with basic data
-        setWatchlist(validWatchlistData.map(anime => ({
-          ...anime,
-          genres: [] // Will be populated progressively
-        })));
-        
-        // Load details in batches
-        const loadBatch = async (startIndex: number) => {
-          if (!isMounted) return;
-          if (startIndex >= validWatchlistData.length) {
-            setIsLoadingMore(false);
-            return;
-          }
-
-          setIsLoadingMore(true);
-          const endIndex = Math.min(startIndex + BATCH_SIZE, validWatchlistData.length);
-          const currentBatch = validWatchlistData.slice(startIndex, endIndex);
-
-          const batchWithGenres = await Promise.all(
-            currentBatch.map(async (anime) => {
-              try {
-                const animeData = await fetchAnimeData(anime.anime_id);
-                return {
-                  ...anime,
-                  genres: animeData?.genres || []
-                };
-              } catch (err) {
-                console.error(`Error fetching genres for anime ${anime.anime_id}:`, err);
-                return anime;
-              }
-            })
-          );
-
-          if (!isMounted) return;
-
-          setWatchlist(prevWatchlist => {
-            const newWatchlist = [...prevWatchlist];
-            batchWithGenres.forEach((animeWithGenres, index) => {
-              newWatchlist[startIndex + index] = animeWithGenres;
-            });
-            return newWatchlist;
-          });
-
-          setLoadedAnimeCount(endIndex);
-          
-          // Load next batch
-          if (endIndex < validWatchlistData.length) {
-            setTimeout(() => loadBatch(endIndex), 100); // Small delay between batches
-          } else {
-            setIsLoadingMore(false);
-          }
-        };
-
-        // Start loading the first batch
-        loadBatch(0);
-        setIsLoading(false);
-
-      } catch (err) {
-        console.error('Error fetching watchlist:', err);
-        if (isMounted) {
-          setError('Failed to load watchlist');
-          setIsLoading(false);
-        }
-      }
-    };
 
     fetchWatchlist();
 
