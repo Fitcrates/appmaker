@@ -1,23 +1,27 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { Star, ChevronDown, X } from 'lucide-react';
 import { LazyLoad } from './LazyLoad';
-import { fetchFromAPI, fetchAnimeData, fetchAnimeGenres, RequestPriority } from '../utils/api';
+import { fetchFromAPI, RequestPriority } from '../utils/api';
 import { Tooltip } from './ui/Tooltip';
 
 // Cache for anime details
 const animeCache: { [key: number]: { data: any; timestamp: number } } = {};
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+const ITEMS_PER_PAGE = 10;
+const BATCH_SIZE = 3;
+const PLACEHOLDER_IMAGE = '/placeholder.jpg';
 
 interface WatchlistAnime {
   id: number;
   anime_id: number;
-  anime_title: string;
-  anime_image: string;
+  anime_title?: string;
+  anime_image?: string;
   status?: 'planning' | 'watching' | 'completed' | 'dropped';
   genres?: { mal_id: number; name: string }[];
   isEnhanced?: boolean;
+  created_at?: string;
 }
 
 interface Genre {
@@ -37,26 +41,47 @@ export function AnimeToWatch() {
   const [watchlist, setWatchlist] = useState<WatchlistAnime[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [genres, setGenres] = useState<Genre[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<Genre[]>([]);
   const [isGenreDropdownOpen, setIsGenreDropdownOpen] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatuses, setSelectedStatuses] = useState<typeof statusOptions[number]['id'][]>([]);
-  const [allGenres, setAllGenres] = useState<Genre[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [loadedAnimeCount, setLoadedAnimeCount] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const BATCH_SIZE = 3;
+  const [allGenres, setAllGenres] = useState<Genre[]>([]);
 
   const genreDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Fetch genres on component mount
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        const response = await fetchFromAPI('/genres/anime', {}, RequestPriority.LOW);
+        if (response?.data) {
+          setAllGenres(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching genres:', error);
+      }
+    };
+
+    fetchGenres();
+  }, []);
+
   // Enhance anime data with API details if needed
   const enhanceAnimeData = async (anime: WatchlistAnime) => {
     try {
-      // If we already have the enhanced data, return as is
-      if (anime.anime_title && anime.anime_image && anime.isEnhanced) {
-        return anime;
+      // Check if we already have the enhanced data
+      if (anime.anime_title && anime.anime_image) {
+        return {
+          ...anime,
+          title: anime.anime_title,
+          image_url: anime.anime_image,
+          isEnhanced: true
+        };
       }
 
       // Check cache first
@@ -66,6 +91,8 @@ export function AnimeToWatch() {
         const { data } = cached;
         return {
           ...anime,
+          title: data.title,
+          image_url: data.images.jpg.image_url,
           anime_title: data.title,
           anime_image: data.images.jpg.image_url,
           genres: data.genres,
@@ -73,7 +100,7 @@ export function AnimeToWatch() {
         };
       }
 
-      // Fetch from API
+      // If not in cache, fetch from API
       const { data: animeData } = await fetchFromAPI(
         `/anime/${anime.anime_id}`,
         {},
@@ -103,8 +130,11 @@ export function AnimeToWatch() {
         console.error('Error updating anime data:', updateError);
       }
 
+      // Return enhanced data
       return {
         ...anime,
+        title: animeData.title,
+        image_url: animeData.images.jpg.image_url,
         anime_title: animeData.title,
         anime_image: animeData.images.jpg.image_url,
         genres: animeData.genres,
@@ -112,62 +142,104 @@ export function AnimeToWatch() {
       };
     } catch (error) {
       console.error(`Error enhancing anime ${anime.anime_id}:`, error);
-      return anime;
+      return {
+        ...anime,
+        title: anime.anime_title || 'Unknown Title',
+        image_url: anime.anime_image || PLACEHOLDER_IMAGE,
+        anime_title: anime.anime_title || 'Unknown Title',
+        anime_image: anime.anime_image || PLACEHOLDER_IMAGE,
+        isEnhanced: false
+      };
     }
   };
 
-  // Fetch watchlist with progressive enhancement
-  const fetchWatchlist = async () => {
+  // Load watchlist with progressive enhancement
+  const fetchWatchlist = useCallback(async (page: number) => {
     if (!user || !supabase) {
       setIsLoading(false);
       return;
     }
 
     try {
-      setIsLoading(true);
       setError('');
+      const startIndex = (page - 1) * ITEMS_PER_PAGE;
       
+      // Fetch total count
+      const { count } = await supabase
+        .from('anime_watchlist')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+      
+      setTotalItems(count || 0);
+
+      // Fetch paginated watchlist
       const { data: watchlistData, error: watchlistError } = await supabase
         .from('anime_watchlist')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(startIndex, startIndex + ITEMS_PER_PAGE - 1);
 
       if (watchlistError) throw watchlistError;
 
-      // Filter out invalid entries and enhance data progressively
-      const validWatchlistData = (watchlistData || [])
-        .filter(item => item.anime_id)
-        .map(item => ({
-          ...item,
-          anime_title: item.anime_title || '',
-          anime_image: item.anime_image || ''
-        }));
+      if (!watchlistData || watchlistData.length === 0) {
+        setWatchlist([]);
+        setIsLoading(false);
+        return;
+      }
 
-      setWatchlist(validWatchlistData);
+      // Initialize watchlist with basic data
+      setWatchlist(watchlistData.map(anime => ({
+        ...anime,
+        title: anime.anime_title || 'Loading...',
+        image_url: anime.anime_image || PLACEHOLDER_IMAGE,
+        anime_title: anime.anime_title || 'Loading...',
+        anime_image: anime.anime_image || PLACEHOLDER_IMAGE,
+        isEnhanced: !!(anime.anime_title && anime.anime_image)
+      })));
 
-      // Enhance data in batches
-      for (let i = 0; i < validWatchlistData.length; i += BATCH_SIZE) {
-        const batch = validWatchlistData.slice(i, i + BATCH_SIZE);
-        const enhancedBatch = await Promise.all(
-          batch.map(anime => enhanceAnimeData(anime))
+      setIsLoading(false);
+      setLoadedAnimeCount(watchlistData.length);
+
+      // Enhance all items that need enhancement
+      const itemsToEnhance = watchlistData.filter(
+        anime => !anime.anime_title || !anime.anime_image
+      );
+
+      if (itemsToEnhance.length > 0) {
+        setIsLoadingMore(true);
+        const enhancedItems = await Promise.all(
+          itemsToEnhance.map(anime => enhanceAnimeData(anime))
         );
 
-        setWatchlist(prev => {
-          const updated = [...prev];
-          enhancedBatch.forEach((enhanced, index) => {
-            updated[i + index] = enhanced;
+        setWatchlist(prevWatchlist => {
+          const newWatchlist = [...prevWatchlist];
+          enhancedItems.forEach(enhancedAnime => {
+            const index = newWatchlist.findIndex(a => a.id === enhancedAnime.id);
+            if (index !== -1) {
+              newWatchlist[index] = enhancedAnime;
+            }
           });
-          return updated;
+          return newWatchlist;
         });
-
-        setLoadedAnimeCount(prev => prev + enhancedBatch.length);
+        
+        setIsLoadingMore(false);
       }
-    } catch (error: any) {
-      setError(error.message);
-    } finally {
+
+    } catch (err) {
+      console.error('Error fetching watchlist:', err);
+      setError('Failed to load watchlist');
       setIsLoading(false);
     }
+  }, [user, supabase]);
+
+  useEffect(() => {
+    fetchWatchlist(currentPage);
+  }, [currentPage, fetchWatchlist]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    setLoadedAnimeCount(0);
   };
 
   // Handle click outside dropdowns
@@ -183,30 +255,6 @@ export function AnimeToWatch() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // Fetch genres
-  const fetchGenres = async () => {
-    try {
-      const genres = await fetchAnimeGenres();
-      setAllGenres(genres);
-    } catch (error) {
-      console.error('Error fetching genres:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchGenres();
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    fetchWatchlist();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [user?.id, supabase]);
 
   const filteredGenres = allGenres.filter(genre =>
     genre.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -319,7 +367,7 @@ export function AnimeToWatch() {
             </button>
 
             {isStatusDropdownOpen && (
-              <div className="absolute left-0 md:left-auto right-0 top-full mt-2 w-full md:w-64 bg-white border rounded-lg shadow-lg">
+              <div className="absolute left-0 md:left-auto left-0 top-full mt-2 w-full md:w-64 bg-white border rounded-lg shadow-lg">
                 {selectedStatuses.length > 0 && (
                   <div className="px-2 py-2 border-b flex flex-wrap gap-1">
                     {selectedStatuses.map((status) => (
@@ -393,7 +441,7 @@ export function AnimeToWatch() {
             </button>
 
             {isGenreDropdownOpen && (
-              <div className="absolute left-0 md:left-auto right-0 top-full mt-2 w-full md:w-64 bg-white border rounded-lg shadow-lg">
+              <div className="absolute left-0 md:left-auto left-0 top-full mt-2 w-full md:w-64 bg-white border rounded-lg shadow-lg">
                 <div className="p-2 border-b">
                   <input
                     type="text"
@@ -491,7 +539,7 @@ export function AnimeToWatch() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {filteredWatchlist.map((anime, index) => (
-            <div key={anime.id} className={`relative ${index >= loadedAnimeCount ? 'opacity-50' : ''}`}>
+            <div key={anime.id} className="relative">
               <Link to={`/anime/${anime.anime_id}`} className="block">
                 <div className="relative pt-[140%]">
                   <img
@@ -540,9 +588,88 @@ export function AnimeToWatch() {
           ))}
         </div>
       )}
-      {isLoadingMore && (
-        <div className="flex justify-center items-center mt-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      
+      {totalItems > 0 && (
+        <div className="flex justify-center items-center gap-2 mt-8">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1}
+            className={`px-3 py-1 rounded ${
+              currentPage === 1
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            }`}
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`px-3 py-1 rounded ${
+              currentPage === 1
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            }`}
+          >
+            Previous
+          </button>
+          
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(5, Math.ceil(totalItems / ITEMS_PER_PAGE)) }, (_, i) => {
+              const pageNum = i + 1;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => handlePageChange(pageNum)}
+                  className={`px-3 py-1 rounded ${
+                    currentPage === pageNum
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            {Math.ceil(totalItems / ITEMS_PER_PAGE) > 5 && (
+              <>
+                <span>...</span>
+                <button
+                  onClick={() => handlePageChange(Math.ceil(totalItems / ITEMS_PER_PAGE))}
+                  className={`px-3 py-1 rounded ${
+                    currentPage === Math.ceil(totalItems / ITEMS_PER_PAGE)
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {Math.ceil(totalItems / ITEMS_PER_PAGE)}
+                </button>
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage >= Math.ceil(totalItems / ITEMS_PER_PAGE)}
+            className={`px-3 py-1 rounded ${
+              currentPage >= Math.ceil(totalItems / ITEMS_PER_PAGE)
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            }`}
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(Math.ceil(totalItems / ITEMS_PER_PAGE))}
+            disabled={currentPage >= Math.ceil(totalItems / ITEMS_PER_PAGE)}
+            className={`px-3 py-1 rounded ${
+              currentPage >= Math.ceil(totalItems / ITEMS_PER_PAGE)
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            }`}
+          >
+            Last
+          </button>
         </div>
       )}
     </div>
