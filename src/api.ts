@@ -1,15 +1,25 @@
 const API_BASE_URL = 'https://api.jikan.moe/v4';
 const RATE_LIMIT_DELAY = 1000; // 1 second between requests
 
+// Cache configuration
+const CACHE_PREFIX = 'anime-api-cache:';
+const CACHE_DURATION = {
+  TOP_ANIME: 5 * 60 * 1000, // 5 minutes
+  SCHEDULES: 30 * 60 * 1000, // 30 minutes
+  GENRES: 24 * 60 * 60 * 1000, // 24 hours
+  DEFAULT: 2 * 60 * 1000 // 2 minutes
+};
+
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
+  expiresAt: number;
 }
 
 // Request queue to handle rate limiting
 class RequestQueue {
   private static instance: RequestQueue;
-  private queue: Array<{ request: () => Promise<any>; priority: RequestPriority }> = [];
+  private queue: Array<() => Promise<any>> = [];
   private processing = false;
   private lastRequestTime = 0;
 
@@ -22,22 +32,16 @@ class RequestQueue {
     return RequestQueue.instance;
   }
 
-  async add<T>(request: () => Promise<T>, priority: RequestPriority): Promise<T> {
+  async add<T>(request: () => Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
-      this.queue.push({
-        request: async () => {
-          try {
-            const result = await request();
-            resolve(result);
-          } catch (error) {
-            reject(error);
-          }
-        },
-        priority
+      this.queue.push(async () => {
+        try {
+          const result = await request();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
       });
-
-      // Sort queue by priority
-      this.queue.sort((a, b) => a.priority - b.priority);
 
       if (!this.processing) {
         this.processQueue();
@@ -57,257 +61,124 @@ class RequestQueue {
         await delay(timeToWait);
       }
 
-      const item = this.queue.shift();
-      if (item) {
+      const request = this.queue.shift();
+      if (request) {
         try {
-          await item.request();
+          this.lastRequestTime = Date.now();
+          await request();
         } catch (error) {
           console.error('Error processing request:', error);
         }
-        this.lastRequestTime = Date.now();
       }
     }
     this.processing = false;
   }
 }
 
-class APICache {
-  private cache: Map<string, CacheEntry<any>> = new Map();
-  private static readonly MAX_CACHE_SIZE = 100;
-  
-  // Cache durations in milliseconds
-  private static readonly CACHE_DURATIONS = {
-    ANIME_DETAILS: 24 * 60 * 60 * 1000, // 24 hours
-    TOP_ANIME: 12 * 60 * 60 * 1000,     // 12 hours
-    SCHEDULES: 30 * 60 * 1000,          // 30 minutes
-    SEASONS: 6 * 60 * 60 * 1000,        // 6 hours
-    RANDOM: 0,                          // No cache for random
-    DEFAULT: 60 * 60 * 1000             // 1 hour default
-  };
+// Cache management
+const getCacheKey = (endpoint: string, params?: Record<string, string | number | boolean>): string => {
+  const queryString = params
+    ? new URLSearchParams(Object.entries(params).map(([key, value]) => [key, String(value)])).toString()
+    : '';
+  return CACHE_PREFIX + endpoint + (queryString ? '?' + queryString : '');
+};
 
-  set<T>(key: string, data: T): void {
-    const duration = this.getCacheDuration(key);
-    if (duration === 0) return; // Don't cache if duration is 0
-    
-    // Clear old entries if cache is too large
-    if (this.cache.size >= APICache.MAX_CACHE_SIZE) {
-      const oldestKey = Array.from(this.cache.entries())
-        .sort(([, a], [, b]) => a.timestamp - b.timestamp)[0][0];
-      this.cache.delete(oldestKey);
-    }
-    
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now()
-    });
-  }
+const getCacheDuration = (endpoint: string): number => {
+  if (endpoint.startsWith('/top/anime')) return CACHE_DURATION.TOP_ANIME;
+  if (endpoint.startsWith('/schedules')) return CACHE_DURATION.SCHEDULES;
+  if (endpoint.startsWith('/genres')) return CACHE_DURATION.GENRES;
+  return CACHE_DURATION.DEFAULT;
+};
 
-  get<T>(key: string): T | null {
-    const entry = this.cache.get(key);
-    if (!entry) return null;
-    
-    const duration = this.getCacheDuration(key);
-    if (duration === 0) return null; // Don't use cache if duration is 0
-    
-    if (Date.now() - entry.timestamp > duration) {
-      this.cache.delete(key);
+const getFromCache = <T>(key: string): T | null => {
+  try {
+    const cached = localStorage.getItem(key);
+    if (!cached) return null;
+
+    const entry: CacheEntry<T> = JSON.parse(cached);
+    if (Date.now() > entry.expiresAt) {
+      localStorage.removeItem(key);
       return null;
     }
-    
+
+    console.log('Cache hit:', key);
     return entry.data;
+  } catch (error) {
+    console.warn('Cache read error:', error);
+    return null;
   }
+};
 
-  private getCacheDuration(key: string): number {
-    if (key.includes('/anime/')) return APICache.CACHE_DURATIONS.ANIME_DETAILS;
-    if (key.includes('/top/anime')) return APICache.CACHE_DURATIONS.TOP_ANIME;
-    if (key.includes('/schedules')) return APICache.CACHE_DURATIONS.SCHEDULES;
-    if (key.includes('/seasons')) return APICache.CACHE_DURATIONS.SEASONS;
-    if (key.includes('/random')) return APICache.CACHE_DURATIONS.RANDOM;
-    return APICache.CACHE_DURATIONS.DEFAULT;
+const setInCache = <T>(key: string, data: T, duration: number): void => {
+  try {
+    const entry: CacheEntry<T> = {
+      data,
+      timestamp: Date.now(),
+      expiresAt: Date.now() + duration
+    };
+    localStorage.setItem(key, JSON.stringify(entry));
+    console.log('Cached:', key);
+  } catch (error) {
+    console.warn('Cache write error:', error);
   }
+};
 
-  clear(): void {
-    this.cache.clear();
-  }
-}
-
-const apiCache = new APICache();
+// Initialize request queue
 const requestQueue = RequestQueue.getInstance();
-const pendingRequests = new Map<string, Promise<any>>();
 
-enum RequestPriority {
+// Utility function to delay execution
+export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export enum RequestPriority {
   HIGH = 0,
   MEDIUM = 1,
-  LOW = 2
+  LOW = 2,
 }
 
-export async function fetchFromAPI<T>(
-  endpoint: string,
+export const fetchFromAPI = async <T>(
+  endpoint: string, 
   params?: Record<string, string | number | boolean>,
   priority: RequestPriority = RequestPriority.MEDIUM
-): Promise<T> {
-  const queryString = params
-    ? '?' + new URLSearchParams(
-        Object.entries(params).map(([key, value]) => [key, String(value)])
-      ).toString()
-    : '';
+): Promise<T> => {
+  const cacheKey = getCacheKey(endpoint, params);
+  const cacheDuration = getCacheDuration(endpoint);
   
-  const url = `${API_BASE_URL}${endpoint}${queryString}`;
-  const cacheKey = url;
+  // Try cache first
+  const cachedData = getFromCache<T>(cacheKey);
+  if (cachedData) return cachedData;
 
-  // Check cache first
-  const cachedData = apiCache.get<T>(cacheKey);
-  if (cachedData) {
-    return cachedData;
-  }
-
-  // Check if there's a pending request for this URL
-  if (pendingRequests.has(cacheKey)) {
-    return pendingRequests.get(cacheKey);
-  }
-
-  // Create new request
-  const request = async () => {
+  return requestQueue.add(async () => {
     try {
+      const url = `${API_BASE_URL}${endpoint}${params ? '?' + new URLSearchParams(
+        Object.entries(params).map(([key, value]) => [key, String(value)])
+      ).toString() : ''}`;
+      
+      console.log('Fetching from', url);
       const response = await fetch(url);
+
       if (!response.ok) {
-        throw new Error(`API request failed: ${response.statusText}`);
+        if (response.status === 429) {
+          console.log('Rate limit hit, waiting 3 seconds...');
+          await delay(3000);
+          return fetchFromAPI<T>(endpoint, params, priority);
+        }
+        throw new Error(`API request failed with status ${response.status}`);
       }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Invalid response format: expected JSON');
+      }
+
       const data = await response.json();
-      apiCache.set(cacheKey, data);
+      
+      // Cache the successful response
+      setInCache(cacheKey, data, cacheDuration);
+      
       return data;
-    } finally {
-      pendingRequests.delete(cacheKey);
-    }
-  };
-
-  const promise = requestQueue.add(request, priority);
-  pendingRequests.set(cacheKey, promise);
-  return promise;
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-export { RequestPriority, delay };
-
-// Anime caching system
-import { AnimeDetails, AnimeGenre } from './types';
-
-// Cache configuration
-const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
-const CACHE_SIZE_LIMIT = 100; // Maximum number of cached items
-
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-interface Cache<T> {
-  [key: string]: CacheEntry<T>;
-}
-
-// Initialize caches
-const animeCache: Cache<AnimeDetails> = {};
-const genreCache: Cache<AnimeGenre[]> = {};
-
-// Helper function to clean old cache entries
-const cleanCache = <T>(cache: Cache<T>) => {
-  const now = Date.now();
-  Object.keys(cache).forEach(key => {
-    if (now - cache[key].timestamp > CACHE_DURATION) {
-      delete cache[key];
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
     }
   });
-};
-
-// Helper function to ensure cache doesn't exceed size limit
-const limitCacheSize = <T>(cache: Cache<T>) => {
-  const entries = Object.entries(cache);
-  if (entries.length > CACHE_SIZE_LIMIT) {
-    // Sort by timestamp and remove oldest entries
-    entries.sort((a, b) => b[1].timestamp - a[1].timestamp);
-    entries.slice(CACHE_SIZE_LIMIT).forEach(([key]) => {
-      delete cache[key];
-    });
-  }
-};
-
-export const fetchAnime = async (id: number): Promise<AnimeDetails> => {
-  const cacheKey = `anime-${id}`;
-  const now = Date.now();
-
-  // Check cache first
-  if (animeCache[cacheKey] && now - animeCache[cacheKey].timestamp < CACHE_DURATION) {
-    console.log('Using cached anime data for:', id);
-    return animeCache[cacheKey].data;
-  }
-
-  // Clean cache periodically
-  cleanCache(animeCache);
-
-  console.log('Fetching from', `https://api.jikan.moe/v4/anime/${id}`);
-  const response = await fetchFromAPI(`anime/${id}`);
-  
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  
-  const { data } = response;
-  console.log('Received data for anime:', { data });
-
-  // Cache the result
-  animeCache[cacheKey] = {
-    data,
-    timestamp: now
-  };
-
-  // Ensure cache doesn't grow too large
-  limitCacheSize(animeCache);
-
-  return data;
-};
-
-export const fetchAnimeGenres = async (): Promise<AnimeGenre[]> => {
-  const cacheKey = 'anime-genres';
-  const now = Date.now();
-
-  // Check cache first
-  if (genreCache[cacheKey] && now - genreCache[cacheKey].timestamp < CACHE_DURATION) {
-    console.log('Using cached genre data');
-    return genreCache[cacheKey].data;
-  }
-
-  // Clean cache periodically
-  cleanCache(genreCache);
-
-  console.log('Fetching from', 'https://api.jikan.moe/v4/genres/anime');
-  const response = await fetchFromAPI('genres/anime');
-  
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  
-  const { data } = response;
-
-  // Cache the result
-  genreCache[cacheKey] = {
-    data,
-    timestamp: now
-  };
-
-  return data;
-};
-
-export const fetchWithRateLimit = async (url: string): Promise<Response> => {
-  const now = Date.now();
-  const timeSinceLastRequest = now - requestQueue.lastRequestTime;
-  
-  if (timeSinceLastRequest < RATE_LIMIT_DELAY) {
-    await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY - timeSinceLastRequest));
-  }
-  
-  requestQueue.lastRequestTime = now;
-  return fetch(url);
 };
