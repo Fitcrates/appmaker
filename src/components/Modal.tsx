@@ -43,40 +43,24 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
       
       {/* Modal Content */}
       <div 
-        className="fixed inset-4 md:inset-8 flex items-center justify-center"
+        className="fixed max-h-full mt-12 inset-4 md:inset-8 flex items-center justify-center overflow-auto"
         style={{ 
           willChange: 'transform',
           backfaceVisibility: 'hidden'
         }}
       >
-        <div 
-          className="bg-white w-full lg:w-1/2 h-[90vh] rounded-lg shadow-xl flex flex-col overflow-hidden"
-          style={{ 
-            contain: 'content',
-            willChange: 'transform',
-            backfaceVisibility: 'hidden'
-          }}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between p-3 sm:p-4 border-b">
-            <h2 className="text-lg sm:text-xl font-semibold">{title}</h2>
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-full overflow-y-auto modalOpen">
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="text-xl font-semibold">{title}</h2>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-4  hover:bg-gray-100 rounded-full transition-colors relative"
             >
-              <X className="h-5 w-5" />
+              <X className="w-6 h-6" />
             </button>
+            
           </div>
-
-          {/* Content */}
-          <div 
-            className="flex-1 overflow-hidden"
-            style={{ 
-              contain: 'content',
-              willChange: 'transform',
-              backfaceVisibility: 'hidden'
-            }}
-          >
+          <div className="overflow-y-auto">
             {children}
           </div>
         </div>

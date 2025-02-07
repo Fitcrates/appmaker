@@ -1,94 +1,72 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [status, setStatus] = useState('Initializing...');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleCallback = async () => {
+    const handleAuthCallback = async () => {
       try {
-        setStatus('Starting authentication...');
-        console.log('Auth callback started', {
-          hash: location.hash,
-          pathname: location.pathname,
-          isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-        });
-
-        // For mobile flow, check hash parameters
-        if (location.hash) {
-          setStatus('Processing mobile authentication...');
-          const hashParams = new URLSearchParams(location.hash.substring(1));
-          const access_token = hashParams.get('access_token');
-          const refresh_token = hashParams.get('refresh_token');
-
-          if (access_token && refresh_token) {
-            console.log('Found tokens in URL hash');
-            const { data, error } = await supabase.auth.setSession({
-              access_token,
-              refresh_token
-            });
-
-            if (error) {
-              console.error('Error setting session from hash:', error);
-              throw error;
-            }
-
-            if (data.session) {
-              console.log('Successfully set session from hash');
-              navigate('/', { replace: true });
-              return;
-            }
-          }
-        }
-
-        // Try getting session normally
-        setStatus('Checking session...');
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Get the session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error('Error getting session:', error);
-          throw error;
-        }
-
+        if (sessionError) throw sessionError;
+        
         if (!session) {
-          console.log('No session found');
-          setStatus('No session found, redirecting...');
-          navigate('/login', { replace: true });
-          return;
+          // If no session, try to exchange the code for a session
+          const { searchParams } = new URL(window.location.href);
+          const code = searchParams.get('code');
+          
+          if (!code) {
+            throw new Error('No code or session found');
+          }
+
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
         }
 
-        // Successfully authenticated
-        console.log('Auth callback successful, session found');
-        setStatus('Authentication successful!');
+        // Navigate to home page
         navigate('/', { replace: true });
-      } catch (error) {
-        console.error('Error in auth callback:', error);
-        setStatus('Authentication failed');
-        navigate('/login', { replace: true });
+      } catch (error: any) {
+        console.error('Auth callback error:', error);
+        setError(error.message);
       }
     };
 
-    handleCallback();
-  }, [navigate, location]);
+    handleAuthCallback();
+  }, [navigate]);
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+              Authentication Error
+            </h2>
+            <p className="mt-2 text-center text-sm text-gray-600">
+              {error}
+            </p>
+            <div className="mt-4 text-center">
+              <Link
+                to="/"
+                className="font-medium text-indigo-600 hover:text-indigo-500"
+              >
+                Return to Home
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center p-6 max-w-sm mx-auto">
-        <h2 className="text-xl font-semibold mb-4">Authentication in Progress</h2>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-        <p className="text-gray-600 mb-2">{status}</p>
-        <p className="text-xs text-gray-500">
-          If you're not redirected within a few seconds,{' '}
-          <button 
-            onClick={() => navigate('/login')} 
-            className="text-blue-500 hover:text-blue-600"
-          >
-            click here
-          </button>
-        </p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-pulse text-xl text-gray-600">
+        Completing authentication...
       </div>
     </div>
   );

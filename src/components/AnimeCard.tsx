@@ -1,6 +1,6 @@
 import React from 'react';
 import { Star } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Anime } from '../types';
 
 interface AnimeCardProps {
@@ -8,8 +8,14 @@ interface AnimeCardProps {
 }
 
 export function AnimeCard({ anime }: AnimeCardProps) {
+  const location = useLocation();
+  
   return (
-    <Link to={`/anime/${anime.mal_id}`} className="group">
+    <Link 
+      to={`/anime/${anime.mal_id}`} 
+      state={{ from: location }}
+      className="group"
+    >
       <div className="bg-white rounded-lg shadow-md overflow-hidden transition-transform group-hover:scale-105">
         <img
           src={anime.images.jpg.image_url}

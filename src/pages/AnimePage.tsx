@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Star, Play } from 'lucide-react';
+import { useParams, useLocation, useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Star, Play, Search, Bookmark } from 'lucide-react';
 import { Anime } from '../types';
 import { fetchFromAPI, RequestPriority } from '../utils/api';
 import { Modal } from '../components/Modal';
@@ -12,7 +12,11 @@ import { supabase, queries } from '../lib/supabase';
 import { AnimeCharacters } from '../components/anime/AnimeCharacters';
 import { AnimeReviews } from '../components/anime/AnimeReviews';
 import { AnimeRecommendations } from '../components/anime/AnimeRecommendations';
+import { getNavigationState, clearNavigationState } from '../utils/navigationState';
+import { Episodes } from '../components/anime/Episodes';
 import { AnimeTrailer } from '../components/anime/AnimeTrailer';
+import { useWatchlist } from '../hooks/useWatchlist';
+import { Tooltip } from '../components/ui/Tooltip';
 
 interface Character {
   character: {
@@ -63,10 +67,12 @@ interface AnimeRecommendation {
 
 export function AnimePage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [anime, setAnime] = useState<Anime | null>(null);
-  const [characters, setCharacters] = useState<Character[]>([]);
-  const [recommendations, setRecommendations] = useState<AnimeRecommendation[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [recommendations, setRecommendations] = useState<AnimeRecommendation[]>([]);
+  const [episodes, setEpisodes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentReviewPage, setCurrentReviewPage] = useState(1);
@@ -77,193 +83,158 @@ export function AnimePage() {
   const [ratingMessage, setRatingMessage] = useState('');
   const { user } = useAuth();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const mounted = useRef(false);
+  const { isInWatchlist, addToWatchlist, removeFromWatchlist } = useWatchlist();
 
   const reviewsPerPage = 3;
   const totalPages = Math.ceil(reviews.length / reviewsPerPage);
 
-  const [hasLoadedCharacters, setHasLoadedCharacters] = useState(false);
   const [hasLoadedReviews, setHasLoadedReviews] = useState(false);
   const [hasLoadedRecommendations, setHasLoadedRecommendations] = useState(false);
+  const [hasLoadedEpisodes, setHasLoadedEpisodes] = useState(false);
 
-  const [isLoadingCharacters, setIsLoadingCharacters] = useState(false);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
 
-  const charactersRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
   const recommendationsRef = useRef<HTMLDivElement>(null);
-
-  const { isIntersecting: isCharactersVisible } = useIntersectionObserver(charactersRef);
-  const { isIntersecting: isReviewsVisible } = useIntersectionObserver(reviewsRef);
-  const { isIntersecting: isRecommendationsVisible } = useIntersectionObserver(recommendationsRef);
-
-  useEffect(() => {
-    console.log('Visibility states:', {
-      characters: isCharactersVisible,
-      reviews: isReviewsVisible,
-      recommendations: isRecommendationsVisible
-    });
-  }, [isCharactersVisible, isReviewsVisible, isRecommendationsVisible]);
-
-  const loadCharacters = useCallback(async () => {
-    if (!id || hasLoadedCharacters || isLoadingCharacters) return;
-    
-    setIsLoadingCharacters(true);
-    try {
-      console.log('Loading characters for anime:', id);
-      const data = await fetchFromAPI<any>(`/anime/${id}/characters`);
-      console.log('Characters API response:', data);
-      
-      if (data?.data) {
-        const validCharacters = data.data
-          .filter((char: any) => {
-            try {
-              return char?.character?.mal_id && char?.character?.name;
-            } catch (e) {
-              console.error('Error validating character:', e);
-              return false;
-            }
-          })
-          .map((char: any) => ({
-            character: {
-              mal_id: char.character.mal_id,
-              name: char.character.name,
-              images: {
-                jpg: {
-                  image_url: char?.character?.images?.jpg?.image_url || '/placeholder-avatar.png'
-                }
-              }
-            },
-            role: char?.role || 'Unknown Role'
-          }));
-        
-        console.log('Valid characters count:', validCharacters.length);
-        if (validCharacters.length > 0) {
-          setCharacters(validCharacters);
-          setHasLoadedCharacters(true);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading characters:', error);
-    } finally {
-      setIsLoadingCharacters(false);
-    }
-  }, [id, hasLoadedCharacters, isLoadingCharacters]);
+  const episodesRef = useRef<HTMLDivElement>(null);
 
   const loadReviews = useCallback(async () => {
     if (!id || hasLoadedReviews || isLoadingReviews) return;
-    
-    setIsLoadingReviews(true);
-    try {
-      console.log('Loading reviews for anime:', id);
-      const data = await fetchFromAPI<any>(`/anime/${id}/reviews`);
-      console.log('Reviews API response:', data);
-      
-      if (data?.data) {
-        const validReviews = data.data.filter((review: any) => {
-          try {
-            return (
-              review?.mal_id &&
-              typeof review?.review === 'string' &&
-              review?.user?.username
-              // Removed date check since we'll handle it in the mapping
-            );
-          } catch (e) {
-            console.error('Error validating review:', e);
-            return false;
-          }
-        }).map((review: any) => {
-          // Handle date separately to avoid any undefined issues
-          let formattedDate = 'Date not available';
-          try {
-            if (review.date) {
-              const date = new Date(review.date);
-              if (!isNaN(date.getTime())) {
-                formattedDate = date.toLocaleDateString();
-              }
-            }
-          } catch (e) {
-            console.error('Error formatting date:', e);
-          }
 
-          return {
-            ...review,
-            date: formattedDate,
-            user: {
-              ...review.user,
-              images: {
-                jpg: {
-                  image_url: review?.user?.images?.jpg?.image_url || '/placeholder-avatar.png'
-                }
-              }
-            }
-          };
-        });
-        
+    setIsLoadingReviews(true);
+    console.log('Loading reviews for anime:', id);
+
+    try {
+      const response = await fetchFromAPI(`/anime/${id}/reviews`, RequestPriority.Low);
+      console.log('Reviews API response:', response);
+      if (response?.data) {
+        const validReviews = response.data.filter((review: any) => review.review && review.user);
         console.log('Valid reviews count:', validReviews.length);
         setReviews(validReviews);
-      } else {
-        console.log('No reviews data found');
-        setReviews([]);
       }
+      setHasLoadedReviews(true);
     } catch (error) {
       console.error('Error loading reviews:', error);
-      setReviews([]);
     } finally {
       setIsLoadingReviews(false);
-      setHasLoadedReviews(true);
     }
   }, [id, hasLoadedReviews, isLoadingReviews]);
 
   const loadRecommendations = useCallback(async () => {
     if (!id || hasLoadedRecommendations || isLoadingRecommendations) return;
-    
+
     setIsLoadingRecommendations(true);
+    console.log('Loading recommendations for anime:', id);
+
     try {
-      console.log('Loading recommendations for anime:', id);
-      const data = await fetchFromAPI<any>(`/anime/${id}/recommendations`);
-      console.log('Recommendations API response:', data);
-      
-      if (data?.data) {
-        const validRecommendations = data.data.filter((rec: any) => {
-          try {
-            return (
-              rec?.entry?.mal_id &&
-              rec?.entry?.title &&
-              // Check if image exists but don't require it
-              (rec?.entry?.images?.jpg?.image_url || true)
-            );
-          } catch (e) {
-            console.error('Error validating recommendation:', e);
-            return false;
-          }
-        }).map((rec: any) => ({
-          ...rec,
-          entry: {
-            ...rec.entry,
-            images: {
-              jpg: {
-                // Use a fallback image if none exists
-                image_url: rec?.entry?.images?.jpg?.image_url || '/placeholder.jpg'
-              }
-            }
-          }
-        }));
-        
-        console.log('Valid recommendations count:', validRecommendations.length);
-        setRecommendations(validRecommendations);
-      } else {
-        console.log('No recommendations data found');
-        setRecommendations([]);
+      const response = await fetchFromAPI(`/anime/${id}/recommendations`, RequestPriority.Low);
+      console.log('Recommendations API response:', response);
+      if (response?.data) {
+        console.log('Valid recommendations count:', response.data.length);
+        setRecommendations(response.data);
       }
+      setHasLoadedRecommendations(true);
     } catch (error) {
       console.error('Error loading recommendations:', error);
-      setRecommendations([]);
     } finally {
       setIsLoadingRecommendations(false);
-      setHasLoadedRecommendations(true);
     }
   }, [id, hasLoadedRecommendations, isLoadingRecommendations]);
+
+  const loadEpisodes = useCallback(async () => {
+    if (!id || hasLoadedEpisodes || isLoadingEpisodes) return;
+
+    setIsLoadingEpisodes(true);
+    console.log('Loading episodes for anime:', id);
+
+    try {
+      const response = await fetchFromAPI(`/anime/${id}/episodes?page=1`, RequestPriority.Low);
+      console.log('Episodes API response:', response);
+      if (response?.data) {
+        setEpisodes(response.data);
+      }
+      setHasLoadedEpisodes(true);
+    } catch (error) {
+      console.error('Error loading episodes:', error);
+    } finally {
+      setIsLoadingEpisodes(false);
+    }
+  }, [id, hasLoadedEpisodes, isLoadingEpisodes]);
+
+  const isElementInViewport = useCallback((el: HTMLElement) => {
+    const rect = el.getBoundingClientRect();
+    return (
+      rect.top >= 0 &&
+      rect.left >= 0 &&
+      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+    );
+  }, []);
+
+  const [isReviewsVisible, setIsReviewsVisible] = useState(false);
+  const [isRecommendationsVisible, setIsRecommendationsVisible] = useState(false);
+  const [isEpisodesVisible, setIsEpisodesVisible] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!reviewsRef.current || !recommendationsRef.current || !episodesRef.current) return;
+
+      const reviewsVisible = isElementInViewport(reviewsRef.current);
+      const recommendationsVisible = isElementInViewport(recommendationsRef.current);
+      const episodesVisible = isElementInViewport(episodesRef.current);
+
+      setIsReviewsVisible(reviewsVisible);
+      setIsRecommendationsVisible(recommendationsVisible);
+      setIsEpisodesVisible(episodesVisible);
+
+      console.log('Visibility states:', {
+        reviews: reviewsVisible,
+        recommendations: recommendationsVisible,
+        episodes: episodesVisible
+      });
+    };
+
+    // Initial check
+    handleScroll();
+
+    // Add scroll listener
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isElementInViewport]);
+
+  useEffect(() => {
+    const loadDynamicContent = async () => {
+      if (isReviewsVisible && !hasLoadedReviews && !isLoadingReviews) {
+        await loadReviews();
+      }
+
+      if (isRecommendationsVisible && !hasLoadedRecommendations && !isLoadingRecommendations) {
+        await loadRecommendations();
+      }
+
+      if (isEpisodesVisible && !hasLoadedEpisodes && !isLoadingEpisodes) {
+        await loadEpisodes();
+      }
+    };
+
+    loadDynamicContent();
+  }, [
+    isReviewsVisible,
+    isRecommendationsVisible,
+    isEpisodesVisible,
+    hasLoadedReviews,
+    hasLoadedRecommendations,
+    hasLoadedEpisodes,
+    isLoadingReviews,
+    isLoadingRecommendations,
+    isLoadingEpisodes,
+    loadReviews,
+    loadRecommendations,
+    loadEpisodes
+  ]);
 
   useEffect(() => {
     const loadAnimeData = async () => {
@@ -315,54 +286,19 @@ export function AnimePage() {
   }, [id]);
 
   useEffect(() => {
-    const loadDynamicContent = async () => {
-      if (!id || !anime) return;
-
-      if (isCharactersVisible && !hasLoadedCharacters && !isLoadingCharacters) {
-        await loadCharacters();
-      }
-
-      if (isReviewsVisible && !hasLoadedReviews && !isLoadingReviews) {
-        await loadReviews();
-      }
-
-      if (isRecommendationsVisible && !hasLoadedRecommendations && !isLoadingRecommendations) {
-        await loadRecommendations();
-      }
-    };
-
-    loadDynamicContent();
-  }, [
-    id,
-    anime,
-    isCharactersVisible,
-    isReviewsVisible,
-    isRecommendationsVisible,
-    hasLoadedCharacters,
-    hasLoadedReviews,
-    hasLoadedRecommendations,
-    isLoadingCharacters,
-    isLoadingReviews,
-    isLoadingRecommendations,
-    loadCharacters,
-    loadReviews,
-    loadRecommendations
-  ]);
-
-  useEffect(() => {
     window.scrollTo(0, 0);
   }, [id]);
 
   useEffect(() => {
-    setCharacters([]);
     setReviews([]);
     setRecommendations([]);
-    setHasLoadedCharacters(false);
+    setEpisodes([]);
     setHasLoadedReviews(false);
     setHasLoadedRecommendations(false);
-    setIsLoadingCharacters(false);
+    setHasLoadedEpisodes(false);
     setIsLoadingReviews(false);
     setIsLoadingRecommendations(false);
+    setIsLoadingEpisodes(false);
     setCurrentReviewPage(1);
     window.scrollTo(0, 0);
   }, [id]);
@@ -371,7 +307,7 @@ export function AnimePage() {
     if (!user?.id || !anime?.mal_id) return;
     
     try {
-      const rating = await queries.getUserRating(user.id, anime.mal_id);
+      const { data: rating } = await queries.getUserRating(user.id, anime.mal_id);
       setUserRating(rating || 0);
     } catch (error) {
       console.error('Error fetching user rating:', error);
@@ -395,6 +331,9 @@ export function AnimePage() {
           user_id: user.id,
           anime_id: anime.mal_id,
           rating: rating,
+          anime_title: anime.title,
+          anime_image: anime.images?.jpg?.image_url,
+          genres: anime.genres,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id,anime_id'
@@ -403,8 +342,15 @@ export function AnimePage() {
       if (error) throw error;
 
       setUserRating(rating);
-      setRatingMessage('Rating saved!');
-      setTimeout(() => setRatingMessage(''), 2000);
+      setRatingMessage('Rating saved successfully!');
+
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        if (mounted.current) {
+          setRatingMessage('');
+        }
+      }, 3000);
+
     } catch (error) {
       console.error('Error saving rating:', error);
       setRatingMessage('Failed to save rating');
@@ -427,256 +373,308 @@ export function AnimePage() {
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        if (!charactersRef.current || !reviewsRef.current || !recommendationsRef.current) return;
+        if (!reviewsRef.current || !recommendationsRef.current || !episodesRef.current) return;
         
-        if (!hasLoadedCharacters && isElementInViewport(charactersRef.current)) loadCharacters();
         if (!hasLoadedReviews && isElementInViewport(reviewsRef.current)) loadReviews();
         if (!hasLoadedRecommendations && isElementInViewport(recommendationsRef.current)) loadRecommendations();
+        if (!hasLoadedEpisodes && isElementInViewport(episodesRef.current)) loadEpisodes();
       }, 100);
     };
-  }, [loadCharacters, loadReviews, loadRecommendations, hasLoadedCharacters, hasLoadedReviews, hasLoadedRecommendations]);
+  }, [loadReviews, loadRecommendations, loadEpisodes, hasLoadedReviews, hasLoadedRecommendations, hasLoadedEpisodes]);
 
   useEffect(() => {
     window.addEventListener('scroll', debouncedScroll, { passive: true });
     return () => window.removeEventListener('scroll', debouncedScroll);
   }, [debouncedScroll]);
 
-  const isElementInViewport = (element: HTMLElement | null) => {
-    if (!element) return false;
-    const rect = element.getBoundingClientRect();
-    return (
-      rect.top >= -rect.height &&
-      rect.left >= -rect.width &&
-      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) + rect.height &&
-      rect.right <= (window.innerWidth || document.documentElement.clientWidth) + rect.width
-    );
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  const handleSearch = () => {
+    navigate('/', {
+      state: { openSearchModal: true }
+    });
+  };
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  const handleReviewClick = (review: Review) => {
+    console.log("Review clicked:", review);
+    setSelectedReview(review);
   };
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4 py-8">
-          <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Search
-          </Link>
-
-          {error ? (
-            <div className="text-red-500">{error}</div>
-          ) : isLoading ? (
-            <div className="animate-pulse">Loading...</div>
-          ) : anime ? (
-            <div>
-              <div className="flex flex-col md:flex-row gap-8">
-                <div className="md:w-1/3 lg:w-1/4">
-                  <img
-                    src={anime.images.jpg.large_image_url}
-                    alt={anime.title}
-                    className="w-full rounded-lg shadow-lg"
-                  />
-                  <div className="mt-4 space-y-2">
-                    {anime.score && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Score</span>
-                        <div className="flex items-center">
-                          <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                          <span>{anime.score}</span>
+      <div className="min-h-screen bg-gray-50 py-8 px-4 md:px-12 lg:px-24 xl:px-48 mt-6">
+        {anime ? (
+          <div>
+            <div className="container mx-auto px-4 py-8">
+              {/* Main Content */}
+              <div className="flex flex-col gap-8">
+                {/* Header Section */}
+                <div className="flex justify-between items-center mb-4">
+                  <button
+                    onClick={handleBack}
+                    className="flex items-center text-blue-600 hover:text-blue-800"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-1" />
+                    Back
+                  </button>
+                </div>
+                <div className="flex flex-col md:flex-row gap-8 h-[80vh]">
+                  <div className="md:w-1/3 lg:w-1/4">
+                    <img
+                      src={anime.images.jpg.large_image_url}
+                      alt={anime.title}
+                      className="w-full rounded-lg shadow-lg"
+                    />
+                    <div className="mt-4 space-y-2">
+                      {anime.score && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Score</span>
+                          <div className="flex items-center">
+                            <Star className="w-4 h-4 text-yellow-400 mr-1" />
+                            <span>{anime.score}</span>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Status</span>
-                      <span>{anime.status}</span>
-                    </div>
-                    {anime.year && (
+                      )}
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Year</span>
-                        <span>{anime.year}</span>
+                        <span className="text-gray-600">Status</span>
+                        <span>{anime.status}</span>
                       </div>
-                    )}
-                  </div>
-                  {user && (
-                    <div className="mt-4">
-                      <h3 className="font-medium mb-2">Your Rating</h3>
-                      <StarRating
-                        initialRating={userRating}
-                        onRatingChange={handleRatingChange}
-                        disabled={isRating}
-                      />
-                      {ratingMessage && (
-                        <p className="text-sm text-green-500 mt-1">{ratingMessage}</p>
+                      {anime.year && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Year</span>
+                          <span>{anime.year}</span>
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-                <div className="md:w-2/3 lg:w-3/4">
-                  <h1 className="text-3xl font-bold mb-2">{anime.title}</h1>
-                  <h2 className="text-xl text-gray-600 mb-4">{anime.title_japanese}</h2>
-                  
-                  {anime.genres && (
-                    <div className="mb-4">
-                      <h3 className="font-medium mb-2 ">Genres</h3>
-                      <p>{anime.genres.map((genre) => genre.name).join(', ')}</p>
-                    </div>
-                  )}
-                  
-                  <p className="text-gray-700 mb-4">{anime.synopsis}</p>
+                    {user && (
+                      <div className="mt-4">
+                        <h3 className="font-medium mb-2">Your Rating</h3>
+                        <StarRating
+      initialRating={userRating || 0}
+      onRatingChange={handleRatingChange}
+      disabled={false} // Set to true if you want to disable user interaction
+    />
+    
+                        <Tooltip content={isInWatchlist[anime.mal_id] ? "Remove from Watchlist" : "Add to Watchlist"}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isInWatchlist[anime.mal_id]) {
+                                removeFromWatchlist(anime.mal_id);
+                              } else {
+                                addToWatchlist({
+                                  mal_id: anime.mal_id,
+                                  title: anime.title,
+                                  images: {
+                                    jpg: {
+                                      image_url: anime.images.jpg.image_url
+                                    }
+                                  }
+                                });
+                              }
+                            }}
+                            className="ml-28 p-2 bg-black rounded-full shadow-md mt-4 "
+                          >
+                            <Bookmark
+                              className={`w-4 h-4 ${
+                                isInWatchlist[anime.mal_id] ? "text-yellow-500 fill-current " : "text-white"
+                              }`}
+                            />
+                          </button>
+                        </Tooltip>
+                        {ratingMessage && (
+                          <p className="text-sm text-center text-green-500 mt-1">{ratingMessage}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="md:w-2/3 lg:w-3/4">
+                    <h1 className="text-3xl font-bold mb-2">{anime.title}</h1>
+                    <h2 className="text-xl text-gray-600 mb-4">{anime.title_japanese}</h2>
+                    
+                    {anime.genres && (
+                      <div className="mb-4">
+                        <h3 className="font-medium mb-2 ">Genres</h3>
+                        <p>{anime.genres.map((genre) => genre.name).join(', ')}</p>
+                      </div>
+                    )}
+                    
+                    <p className="text-gray-700 mb-4">{anime.synopsis}</p>
 
-                  {anime.trailer?.youtube_id && (
-                    <div className="mb-6">
-                      <AnimeTrailer
-                        youtubeId={anime.trailer.youtube_id}
-                        embedUrl={anime.trailer.embed_url}
-                        onTrailerClick={() => setShowTrailer(true)}
-                      />
-                    </div>
-                  )}
+                    {anime.trailer?.youtube_id && (
+                      <div className="mb-6">
+                        <AnimeTrailer
+                          youtubeId={anime.trailer.youtube_id}
+                          embedUrl={anime.trailer.embed_url}
+                          onTrailerClick={() => setShowTrailer(true)}
+                        />
+                      </div>
+                    )}
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="font-medium mb-2">Information</h3>
-                      <dl className="space-y-1">
-                        <div className="flex justify-between">
-                          <dt className="text-gray-600">Type</dt>
-                          <dd>{anime.type}</dd>
-                        </div>
-                        <div className="flex justify-between">
-                          <dt className="text-gray-600">Episodes</dt>
-                          <dd>{anime.episodes}</dd>
-                        </div>
-                        <div className="flex justify-between">
-                          <dt className="text-gray-600">Status</dt>
-                          <dd>{anime.status}</dd>
-                        </div>
-                        <div className="flex justify-between">
-                          <dt className="text-gray-600">Duration</dt>
-                          <dd>{anime.duration}</dd>
-                        </div>
-                        <div className="flex justify-between">
-                          <dt className="text-gray-600">Aired</dt>
-                          <dd>
-                            {anime.aired
-                              ? `${new Date(anime.aired.from).toLocaleDateString()} - ${anime.aired.to ? new Date(anime.aired.to).toLocaleDateString() : 'Present'}`
-                              : 'N/A'}
-                          </dd>
-                        </div>
-                      </dl>
-                    </div>
-                    <div>
-                      <h3 className="font-medium mb-2">Statistics</h3>
-                      <dl className="space-y-1">
-                        {anime.members && (
-                          <div className="flex justify-between">
-                            <dt className="text-gray-600">Members</dt>
-                            <dd>{anime.members.toLocaleString()}</dd>
+                    <div className="flex w-full gap-8 justify-between">
+                      <div className="w-1/2">
+                        <h3 className="font-medium mb-2">Information</h3>
+                        <dl className="space-y-2 justify-between w-full">
+                          <div className="flex justify-between ">
+                            <dt className="text-gray-600">Type</dt>
+                            <dd>{anime.type}</dd>
                           </div>
-                        )}
-                        {anime.favorites && (
-                          <div className="flex justify-between">
-                            <dt className="text-gray-600">Favorites</dt>
-                            <dd>{anime.favorites.toLocaleString()}</dd>
+                          <div className="flex justify-between ">
+                            <dt className="text-gray-600">Episodes</dt>
+                            <dd>{anime.episodes}</dd>
                           </div>
-                        )}
-                        {anime.rank && (
-                          <div className="flex justify-between">
-                            <dt className="text-gray-600">Rank</dt>
-                            <dd>#{anime.rank.toLocaleString()}</dd>
+                          <div className="flex justify-between ">
+                            <dt className="text-gray-600">Status</dt>
+                            <dd>{anime.status}</dd>
                           </div>
-                        )}
-                        {anime.popularity && (
                           <div className="flex justify-between">
-                            <dt className="text-gray-600">Popularity</dt>
-                            <dd>#{anime.popularity.toLocaleString()}</dd>
+                            <dt className="text-gray-600">Duration</dt>
+                            <dd>{anime.duration}</dd>
                           </div>
-                        )}
-                        {anime.scored_by && (
                           <div className="flex justify-between">
-                            <dt className="text-gray-600">Scored By</dt>
-                            <dd>#{anime.scored_by.toLocaleString()}</dd>
+                            <dt className="text-gray-600">Aired</dt>
+                            <dd>
+                              {anime.aired
+                                ? `${new Date(anime.aired.from).toLocaleDateString()} - ${anime.aired.to ? new Date(anime.aired.to).toLocaleDateString() : 'Present'}`
+                                : 'N/A'}
+                            </dd>
                           </div>
-                        )}
-                      </dl>
+                        </dl>
+                      </div>
+                      <div className="w-1/2">
+                        <h3 className="font-medium mb-2">Statistics</h3>
+                        <dl className="space-y-2 justify-between w-full">
+                          {anime.members && (
+                            <div className="flex justify-between">
+                              <dt className="text-gray-600">Members</dt>
+                              <dd>{anime.members.toLocaleString()}</dd>
+                            </div>
+                          )}
+                          {anime.favorites && (
+                            <div className="flex justify-between">
+                              <dt className="text-gray-600">Favorites</dt>
+                              <dd>{anime.favorites.toLocaleString()}</dd>
+                            </div>
+                          )}
+                          {anime.rank && (
+                            <div className="flex justify-between">
+                              <dt className="text-gray-600">Rank</dt>
+                              <dd>#{anime.rank.toLocaleString()}</dd>
+                            </div>
+                          )}
+                          {anime.popularity && (
+                            <div className="flex justify-between">
+                              <dt className="text-gray-600">Popularity</dt>
+                              <dd>#{anime.popularity.toLocaleString()}</dd>
+                            </div>
+                          )}
+                          {anime.scored_by && (
+                            <div className="flex justify-between">
+                              <dt className="text-gray-600">Scored By</dt>
+                              <dd>#{anime.scored_by.toLocaleString()}</dd>
+                            </div>
+                          )}
+                        </dl>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-             
+                {/* Characters Section */}
+                <div className="mt-8">
+                  <AnimeCharacters animeId={Number(id)} />
+                </div>
 
-              {/* Characters Section */}
-              <div ref={charactersRef}>
-                <AnimeCharacters
-                  characters={characters}
-                  isLoading={isLoadingCharacters}
-                  hasLoaded={hasLoadedCharacters}
-                />
-              </div>
+                {/* Reviews Section */}
+                <div className="mt-8" ref={reviewsRef}>
+                  <AnimeReviews
+                    reviews={reviews}
+                    currentReviewPage={currentReviewPage}
+                    totalPages={totalPages}
+                    reviewsPerPage={reviewsPerPage}
+                    isLoading={isLoadingReviews}
+                    hasLoaded={hasLoadedReviews}
+                    onPageChange={setCurrentReviewPage}
+                    onReviewClick={handleReviewClick}
+                  />
+                </div>
 
-              {/* Reviews Section */}
-              <div ref={reviewsRef}>
-                <AnimeReviews
-                  reviews={reviews}
-                  currentReviewPage={currentReviewPage}
-                  totalPages={totalPages}
-                  reviewsPerPage={reviewsPerPage}
-                  isLoading={isLoadingReviews}
-                  hasLoaded={hasLoadedReviews}
-                  onPageChange={setCurrentReviewPage}
-                  onReviewClick={setSelectedReview}
-                />
-              </div>
+                {/* Episodes Section */}
+                <div className="mt-8" ref={episodesRef}>
+                  {episodes.length > 0 ? (
+                    <div>
+                      <h2 className="text-2xl font-bold mb-6">Episodes</h2>
+                      <Episodes animeId={Number(id)} episodes={episodes} />
+                    </div>
+                  ) : isLoadingEpisodes ? (
+                    <div className="animate-pulse">Loading episodes...</div>
+                  ) : null}
+                </div>
 
-              {/* Recommendations Section */}
-              <div ref={recommendationsRef}>
-                <AnimeRecommendations
-                  recommendations={recommendations}
-                  isLoading={isLoadingRecommendations}
-                  hasLoaded={hasLoadedRecommendations}
-                />
+                {/* Recommendations Section */}
+                <div className="mt-4" ref={recommendationsRef}>
+                  <AnimeRecommendations
+                    recommendations={recommendations}
+                    isLoading={isLoadingRecommendations}
+                    hasLoaded={hasLoadedRecommendations}
+                  />
+                </div>
               </div>
             </div>
-          ) : null}
+          </div>
+        ) : null}
 
-          {selectedReview && (
-            <Modal onClose={() => setSelectedReview(null)}>
-              <div className="p-6 max-w-2xl w-full">
-                <div className="flex items-center gap-3 mb-4">
-                  <img
-                    src={selectedReview.user.images.jpg.image_url}
-                    alt={selectedReview.user.username}
-                    className="w-12 h-12 rounded-full"
-                  />
-                  <div>
-                    <p className="font-medium">{selectedReview.user.username}</p>
-                    <p className="text-sm text-gray-600">{selectedReview.date}</p>
-                  </div>
+        {/* Review Modal */}
+        {selectedReview && (
+          <Modal 
+            isOpen={!!selectedReview}
+            onClose={() => setSelectedReview(null)}
+            title={`Review by ${selectedReview.user.username}`}
+          >
+            <div className="p-6 max-w-2xl w-full modalOpen">
+              <div className="flex items-center gap-3 mb-4">
+                <img
+                  src={selectedReview.user.images.jpg.image_url}
+                  alt={selectedReview.user.username}
+                  className="w-12 h-12 rounded-full"
+                />
+                <div>
+                  <p className="font-medium">{selectedReview.user.username}</p>
+                  <p className="text-sm text-gray-600">{selectedReview.date}</p>
                 </div>
-                <p className="whitespace-pre-wrap">{selectedReview.review}</p>
               </div>
-            </Modal>
-          )}
+              <p className="whitespace-pre-wrap">{selectedReview.review}</p>
+            </div>
+          </Modal>
+        )}
 
-          {anime && showTrailer && (
-            <Modal
-              isOpen={showTrailer}
-              onClose={() => setShowTrailer(false)}
-              title={`${anime?.title || 'Anime'} - Trailer`}
-            >
-              <div className="relative w-full h-full">
-                {showTrailer && anime?.trailer?.embed_url && (
-                  <iframe
-                    ref={iframeRef}
-                    src={anime.trailer.embed_url}
-                    title={`${anime.title || 'Anime'} trailer`}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="absolute inset-0 w-full h-full"
-                  />
-                )}
-              </div>
-            </Modal>
-          )}
-        </div>
+        {/* Trailer Modal */}
+        {showTrailer && anime?.trailer?.youtube_id && (
+          <Modal
+            isOpen={showTrailer}
+            onClose={() => setShowTrailer(false)}
+            title={`${anime?.title || 'Anime'} - Trailer`}
+          >
+            <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+              <iframe
+                src={`https://www.youtube.com/embed/${anime.trailer.youtube_id}?autoplay=1`}
+                title={`${anime.title || 'Anime'} trailer`}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute top-0 left-0 w-full h-full"
+              />
+            </div>
+          </Modal>
+        )}
       </div>
     </ErrorBoundary>
   );

@@ -1,29 +1,22 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { Navbar } from './components/Navbar';
-import { Footer } from './components/Footer';
+import { Layout } from './components/Layout';
 import { AuthProvider } from './context/AuthContext';
+import { ScrollToTop } from './components/ScrollToTop';
 
 function App() {
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="flex-grow">
-        <div className="container mx-auto px-4">
-          <Outlet />
-        </div>
-      </main>
-      <Footer />
-    </div>
-  );
-}
-
-function AppWrapper() {
-  return (
     <AuthProvider>
-      <App />
+      <div className="bg-gray-50">
+        <ScrollToTop />
+        <Layout>
+          <div className="container mx-auto">
+            <Outlet />
+          </div>
+        </Layout>
+      </div>
     </AuthProvider>
   );
 }
 
-export default AppWrapper;
+export default App;

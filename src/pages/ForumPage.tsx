@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { fetchFromAPI } from '../api';
 import { MessageCircle, Users, ExternalLink, Search, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import '../index.css';
+
 
 interface ForumPost {
   mal_id: number;
@@ -204,8 +206,8 @@ const ForumPage: React.FC = () => {
   );
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Anime Forum Discussions</h1>
+    <div className="container mx-auto px-4 py-8 ">
+      <h1 className="text-3xl font-bold mb-8 ">Anime Forum Discussions</h1>
 
       <div className="mb-8 space-y-4">
         {/* Main Search and Quick Access */}

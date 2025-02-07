@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import { Star, ChevronDown, X } from 'lucide-react';
 import { LazyLoad } from './LazyLoad';
 import { fetchFromAPI, RequestPriority } from '../utils/api';
 import { Tooltip } from './ui/Tooltip';
+import { saveNavigationState, getNavigationState } from '../utils/navigationState';
+import { Pagination } from './Pagination';
 
 // Cache for anime details
 const animeCache: { [key: number]: { data: any; timestamp: number } } = {};
@@ -38,19 +40,22 @@ const statusOptions = [
 
 export function AnimeToWatch() {
   const { user, supabase } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [watchlist, setWatchlist] = useState<WatchlistAnime[]>([]);
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1'));
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(
+    searchParams.get('statuses')?.split(',').filter(Boolean) || []
+  );
+  const [selectedGenres, setSelectedGenres] = useState<Genre[]>([]);
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedGenres, setSelectedGenres] = useState<Genre[]>([]);
-  const [isGenreDropdownOpen, setIsGenreDropdownOpen] = useState(false);
-  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatuses, setSelectedStatuses] = useState<typeof statusOptions[number]['id'][]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [loadedAnimeCount, setLoadedAnimeCount] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [allGenres, setAllGenres] = useState<Genre[]>([]);
+  const [openPlanDropdowns, setOpenPlanDropdowns] = useState<{ [key: number]: boolean }>({});
+  const location = useLocation();
 
   const genreDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
@@ -75,81 +80,48 @@ export function AnimeToWatch() {
   const enhanceAnimeData = async (anime: WatchlistAnime) => {
     try {
       // Check if we already have the enhanced data
-      if (anime.anime_title && anime.anime_image) {
+      if (anime.anime_title && anime.anime_image && anime.genres) {
         return {
           ...anime,
-          title: anime.anime_title,
-          image_url: anime.anime_image,
           isEnhanced: true
         };
       }
 
-      // Check cache first
-      const now = Date.now();
-      const cached = animeCache[anime.anime_id];
-      if (cached && now - cached.timestamp < CACHE_DURATION) {
-        const { data } = cached;
-        return {
-          ...anime,
-          title: data.title,
-          image_url: data.images.jpg.image_url,
-          anime_title: data.title,
-          anime_image: data.images.jpg.image_url,
-          genres: data.genres,
-          isEnhanced: true
-        };
-      }
-
-      // If not in cache, fetch from API
-      const { data: animeData } = await fetchFromAPI(
+      // Fetch from API
+      const animeData = await fetchFromAPI<any>(
         `/anime/${anime.anime_id}`,
         {},
         RequestPriority.LOW
       );
 
-      if (!animeData) {
+      if (!animeData?.data) {
         throw new Error('No data received from API');
       }
 
-      // Update cache
-      animeCache[anime.anime_id] = {
-        data: animeData,
-        timestamp: now
-      };
-
-      // Update database with the new information
+      // Update the database with the new information
       const { error: updateError } = await supabase
         .from('anime_watchlist')
         .update({
-          anime_title: animeData.title,
-          anime_image: animeData.images.jpg.image_url
+          anime_title: animeData.data.title,
+          anime_image: animeData.data.images?.jpg?.image_url || null,
+          genres: animeData.data.genres // Store genres in the database
         })
-        .eq('id', anime.id);
+        .eq('anime_id', anime.anime_id)
+        .eq('user_id', user.id);
 
-      if (updateError) {
-        console.error('Error updating anime data:', updateError);
-      }
+      if (updateError) throw updateError;
 
-      // Return enhanced data
+      // Return enhanced anime
       return {
         ...anime,
-        title: animeData.title,
-        image_url: animeData.images.jpg.image_url,
-        anime_title: animeData.title,
-        anime_image: animeData.images.jpg.image_url,
-        genres: animeData.genres,
+        anime_title: animeData.data.title,
+        anime_image: animeData.data.images?.jpg?.image_url || PLACEHOLDER_IMAGE,
+        genres: animeData.data.genres,
         isEnhanced: true
       };
     } catch (error) {
       console.error(`Error enhancing anime ${anime.anime_id}:`, error);
-      return {
-        ...anime,
-        title: anime.anime_title || 'Unknown Title',
-        image_url: anime.anime_image || PLACEHOLDER_IMAGE,
-        anime_title: anime.anime_title || 'Unknown Title',
-        anime_image: anime.anime_image || PLACEHOLDER_IMAGE,
-        isEnhanced: false
-      };
+      return anime;
     }
   };
 
@@ -189,43 +161,53 @@ export function AnimeToWatch() {
       }
 
       // Initialize watchlist with basic data
-      setWatchlist(watchlistData.map(anime => ({
-        ...anime,
-        title: anime.anime_title || 'Loading...',
-        image_url: anime.anime_image || PLACEHOLDER_IMAGE,
-        anime_title: anime.anime_title || 'Loading...',
-        anime_image: anime.anime_image || PLACEHOLDER_IMAGE,
-        isEnhanced: !!(anime.anime_title && anime.anime_image)
-      })));
+      const initialWatchlist = watchlistData.map(item => ({
+        ...item,
+        anime_image: item.anime_image || PLACEHOLDER_IMAGE,
+        genres: item.genres || [],
+        status: item.status || 'planning',
+        isEnhanced: !!(item.anime_title && item.anime_image && item.genres?.length)
+      }));
 
+      setWatchlist(initialWatchlist);
       setIsLoading(false);
-      setLoadedAnimeCount(watchlistData.length);
 
-      // Enhance all items that need enhancement
-      const itemsToEnhance = watchlistData.filter(
-        anime => !anime.anime_title || !anime.anime_image
+      // Find items that need enhancement
+      const itemsToEnhance = initialWatchlist.filter(
+        item => !item.anime_title || !item.anime_image || !item.genres?.length
       );
 
       if (itemsToEnhance.length > 0) {
         setIsLoadingMore(true);
-        const enhancedItems = await Promise.all(
-          itemsToEnhance.map(anime => enhanceAnimeData(anime))
-        );
+        
+        // Enhance in batches to respect API rate limits
+        for (let i = 0; i < itemsToEnhance.length; i += BATCH_SIZE) {
+          const batch = itemsToEnhance.slice(i, i + BATCH_SIZE);
+          const enhancedBatch = await Promise.all(
+            batch.map(item => enhanceAnimeData(item))
+          );
 
-        setWatchlist(prevWatchlist => {
-          const newWatchlist = [...prevWatchlist];
-          enhancedItems.forEach(enhancedAnime => {
-            const index = newWatchlist.findIndex(a => a.id === enhancedAnime.id);
-            if (index !== -1) {
-              newWatchlist[index] = enhancedAnime;
-            }
+          setWatchlist(prevWatchlist => {
+            const newWatchlist = [...prevWatchlist];
+            enhancedBatch.forEach(enhancedItem => {
+              const index = newWatchlist.findIndex(w => w.anime_id === enhancedItem.anime_id);
+              if (index !== -1) {
+                newWatchlist[index] = enhancedItem;
+              }
+            });
+            return newWatchlist;
           });
-          return newWatchlist;
-        });
+
+          setLoadedAnimeCount(prev => prev + batch.length);
+
+          // Add delay between batches to respect rate limits
+          if (i + BATCH_SIZE < itemsToEnhance.length) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
         
         setIsLoadingMore(false);
       }
-
     } catch (err) {
       console.error('Error fetching watchlist:', err);
       setError('Failed to load watchlist');
@@ -237,6 +219,75 @@ export function AnimeToWatch() {
     fetchWatchlist(currentPage);
   }, [currentPage, fetchWatchlist]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (currentPage !== 1) {
+      params.set('page', currentPage.toString());
+    } else {
+      params.delete('page');
+    }
+    if (selectedStatuses.length > 0) {
+      params.set('statuses', selectedStatuses.join(','));
+    } else {
+      params.delete('statuses');
+    }
+    if (selectedGenres.length > 0) {
+      params.set('genres', selectedGenres.map(g => g.mal_id).join(','));
+    } else {
+      params.delete('genres');
+    }
+    if (searchTerm) {
+      params.set('search', searchTerm);
+    } else {
+      params.delete('search');
+    }
+    setSearchParams(params);
+  }, [currentPage, selectedStatuses, selectedGenres, searchTerm]);
+
+  useEffect(() => {
+    const page = parseInt(searchParams.get('page') || '1');
+    const statuses = searchParams.get('statuses')?.split(',').filter(Boolean) || [];
+    const search = searchParams.get('search') || '';
+    
+    setCurrentPage(page);
+    setSelectedStatuses(statuses);
+    setSearchTerm(search);
+  }, [searchParams]);
+
+  useEffect(() => {
+    // Save navigation state when component mounts or filters change
+    saveNavigationState({
+      pathname: '/user/watchlist',
+      search: '',
+      filters: {
+        selectedGenres,
+        selectedStatuses,
+        searchTerm,
+        currentPage
+      }
+    });
+  }, [selectedGenres, selectedStatuses, searchTerm, currentPage]);
+
+  useEffect(() => {
+    const savedState = getNavigationState();
+    if (savedState?.source?.component === 'AnimeToWatch' && savedState?.page) {
+      setCurrentPage(savedState.page);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentPage > 0) {  // Only save if page is valid
+      saveNavigationState({
+        pathname: '/user/watchlist',
+        search: '',
+        page: currentPage,
+        source: {
+          component: 'AnimeToWatch'
+        }
+      });
+    }
+  }, [currentPage]);
+
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
     setLoadedAnimeCount(0);
@@ -244,14 +295,19 @@ export function AnimeToWatch() {
 
   // Handle click outside dropdowns
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.plan-dropdown')) {
+        setOpenPlanDropdowns({});
+      }
       if (genreDropdownRef.current && !genreDropdownRef.current.contains(event.target as Node)) {
-        setIsGenreDropdownOpen(false);
+        setSelectedGenres([]);
       }
       if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
-        setIsStatusDropdownOpen(false);
+        setSelectedStatuses([]);
       }
-    }
+    };
+    
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -293,21 +349,113 @@ export function AnimeToWatch() {
 
   const updateAnimeStatus = async (animeId: number, newStatus: WatchlistAnime['status']) => {
     try {
+      if (!user || !supabase) {
+        return;
+      }
+
       const { error } = await supabase
         .from('anime_watchlist')
         .update({ status: newStatus })
-        .eq('id', animeId);
+        .eq('anime_id', animeId)
+        .eq('user_id', user.id)
+        .select();
 
       if (error) throw error;
 
-      setWatchlist(watchlist.map(anime => 
-        anime.id === animeId ? { ...anime, status: newStatus } : anime
+      // Update local state
+      setWatchlist(prev => prev.map(anime => 
+        anime.anime_id === animeId 
+          ? { ...anime, status: newStatus }
+          : anime
       ));
+
     } catch (err) {
-      console.error('Error updating status:', err);
       setError('Failed to update status');
     }
   };
+
+  // Check and update missing genre data
+  const updateMissingGenreData = useCallback(async () => {
+    if (!user || !supabase) return;
+
+    try {
+      // Fetch all entries with missing or empty genre data
+      const { data: watchlistData, error: fetchError } = await supabase
+        .from('anime_watchlist')
+        .select('*')
+        .eq('user_id', user.id)
+        .or('genres.is.null,genres.eq.[]');  // Check for both null and empty arrays
+
+      if (fetchError) throw fetchError;
+
+      // Filter out entries that already have genres
+      const missingGenreData = watchlistData?.filter(item => 
+        !item.genres || 
+        !Array.isArray(item.genres) || 
+        item.genres.length === 0
+      );
+
+      if (!missingGenreData || missingGenreData.length === 0) {
+        return;
+      }
+
+      // Update in batches to respect API rate limits
+      for (let i = 0; i < missingGenreData.length; i += BATCH_SIZE) {
+        const batch = missingGenreData.slice(i, i + BATCH_SIZE);
+        
+        await Promise.all(
+          batch.map(async (item) => {
+            try {
+              const animeData = await fetchFromAPI<any>(
+                `/anime/${item.anime_id}`,
+                {},
+                RequestPriority.LOW
+              );
+
+              if (!animeData?.data) {
+                throw new Error('No data received from API');
+              }
+
+              // Ensure we have valid genre data before updating
+              const genres = animeData.data.genres || [];
+              if (genres.length === 0) {
+                return;
+              }
+
+              const { error: updateError } = await supabase
+                .from('anime_watchlist')
+                .update({
+                  anime_title: animeData.data.title,
+                  anime_image: animeData.data.images?.jpg?.image_url || null,
+                  genres: genres
+                })
+                .eq('anime_id', item.anime_id)
+                .eq('user_id', user.id);
+
+              if (updateError) throw updateError;
+            } catch (error) {
+              console.error(`Error updating genre data for anime ${item.anime_id}:`, error);
+            }
+          })
+        );
+
+        // Add delay between batches to respect rate limits
+        if (i + BATCH_SIZE < missingGenreData.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      // Refresh the watchlist after updating
+      fetchWatchlist(currentPage);
+    } catch (error) {
+      console.error('Error updating missing genre data:', error);
+    }
+  }, [user, supabase, currentPage, fetchWatchlist]);
+
+  // Run the update check when component mounts
+  useEffect(() => {
+    updateMissingGenreData();
+  }, [updateMissingGenreData]);
 
   if (!user) {
     return (
@@ -346,7 +494,7 @@ export function AnimeToWatch() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto  py-8 mt-12 px-4 md:px-12 lg:px-24 xl:px-48">
       <h1 className="text-3xl font-bold mb-8">My Watchlist</h1>
       
       {error && (
@@ -359,73 +507,37 @@ export function AnimeToWatch() {
           {/* Status Filter Dropdown */}
           <div className="relative w-full md:w-auto z-50" ref={statusDropdownRef}>
             <button
-              onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+              onClick={() => setSelectedStatuses([])}
               className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-white border rounded-lg shadow-sm hover:bg-gray-50"
             >
               Filter by Status
               <ChevronDown className="w-4 h-4" />
             </button>
 
-            {isStatusDropdownOpen && (
+            {selectedStatuses.length > 0 && (
               <div className="absolute left-0 md:left-auto left-0 top-full mt-2 w-full md:w-64 bg-white border rounded-lg shadow-lg">
-                {selectedStatuses.length > 0 && (
-                  <div className="px-2 py-2 border-b flex flex-wrap gap-1">
-                    {selectedStatuses.map((status) => (
-                      <span
-                        key={status}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                      >
-                        {statusOptions.find(opt => opt.id === status)?.label}
-                        <button
-                          onClick={() => setSelectedStatuses(selectedStatuses.filter(s => s !== status))}
-                          className="hover:text-blue-600"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))}
+                {selectedStatuses.map((status) => (
+                  <div
+                    key={status}
+                    className="px-4 py-2 hover:bg-gray-100"
+                  >
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedStatuses.includes(status)}
+                        onChange={() => {
+                          if (selectedStatuses.includes(status)) {
+                            setSelectedStatuses(selectedStatuses.filter(s => s !== status));
+                          } else {
+                            setSelectedStatuses([...selectedStatuses, status]);
+                          }
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm">{statusOptions.find(opt => opt.id === status)?.label}</span>
+                    </label>
                   </div>
-                )}
-
-                <div className="max-h-64 overflow-y-auto">
-                  {statusOptions.map((status) => (
-                    <div
-                      key={status.id}
-                      className="px-4 py-2 hover:bg-gray-100"
-                    >
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedStatuses.includes(status.id)}
-                          onChange={() => {
-                            if (selectedStatuses.includes(status.id)) {
-                              setSelectedStatuses(selectedStatuses.filter(s => s !== status.id));
-                            } else {
-                              setSelectedStatuses([...selectedStatuses, status.id]);
-                            }
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm">{status.label}</span>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="p-2 border-t flex justify-between">
-                  <button
-                    onClick={() => setSelectedStatuses([])}
-                    className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
-                  >
-                    Clear All
-                  </button>
-                  <button
-                    onClick={() => setIsStatusDropdownOpen(false)}
-                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    OK
-                  </button>
-                </div>
+                ))}
               </div>
             )}
           </div>
@@ -433,15 +545,15 @@ export function AnimeToWatch() {
           {/* Genre Filter Dropdown */}
           <div className="relative w-full md:w-auto z-50" ref={genreDropdownRef}>
             <button
-              onClick={() => setIsGenreDropdownOpen(!isGenreDropdownOpen)}
-              className="w-full z-50 md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-white border rounded-lg shadow-sm hover:bg-gray-50"
+              onClick={() => setSelectedGenres([])}
+              className="w-full z-50 md:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-white border rounded-b-lg shadow-sm hover:bg-gray-50"
             >
               Filter by Genre
               <ChevronDown className="w-4 h-4" />
             </button>
 
-            {isGenreDropdownOpen && (
-              <div className="absolute left-0 md:left-auto left-0 top-full mt-2 w-full md:w-64 bg-white border rounded-lg shadow-lg">
+            {selectedGenres.length > 0 && (
+              <div className="absolute left-0 md:left-auto left-0 top-full mt-2 w-full md:w-64 bg-white border rounded-b-lg shadow-lg">
                 <div className="p-2 border-b">
                   <input
                     type="text"
@@ -452,26 +564,29 @@ export function AnimeToWatch() {
                   />
                 </div>
 
-                <div className="max-h-64 overflow-y-auto z-40">
-                  {selectedGenres.length > 0 && (
-                    <div className="px-2 py-2 border-b flex flex-wrap gap-1">
-                      {selectedGenres.map((genre) => (
-                        <span
-                          key={genre.mal_id}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                        >
-                          {genre.name}
-                          <button
-                            onClick={() => setSelectedGenres(selectedGenres.filter(g => g.mal_id !== genre.mal_id))}
-                            className="hover:text-blue-600"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
+                <div className="max-h-48 overflow-y-auto z-40">
+                  {selectedGenres.map((genre) => (
+                    <div
+                      key={genre.mal_id}
+                      className="px-4 py-2 hover:bg-gray-100"
+                    >
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedGenres.some(g => g.mal_id === genre.mal_id)}
+                          onChange={() => {
+                            if (selectedGenres.some(g => g.mal_id === genre.mal_id)) {
+                              setSelectedGenres(selectedGenres.filter(g => g.mal_id !== genre.mal_id));
+                            } else {
+                              setSelectedGenres([...selectedGenres, genre]);
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">{genre.name}</span>
+                      </label>
                     </div>
-                  )}
-
+                  ))}
                   {filteredGenres.map((genre) => (
                     <div
                       key={genre.mal_id}
@@ -504,7 +619,7 @@ export function AnimeToWatch() {
                     Clear All
                   </button>
                   <button
-                    onClick={() => setIsGenreDropdownOpen(false)}
+                    onClick={() => setSelectedGenres([])}
                     className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
                   >
                     OK
@@ -537,15 +652,15 @@ export function AnimeToWatch() {
           No anime found matching your filters
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {filteredWatchlist.map((anime, index) => (
-            <div key={anime.id} className="relative">
-              <Link to={`/anime/${anime.anime_id}`} className="block">
-                <div className="relative pt-[140%]">
+            <div key={anime.id} className="relative  shadow-lg rounded-lg aspect-[5/7]">
+              <Link to={`/anime/${anime.anime_id}`} className="block  ">
+                <div className="relative pt-[100%] rounded-lg">
                   <img
                     src={anime.anime_image}
                     alt={anime.anime_title}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-cover rounded-t-lg"
                     loading="lazy"
                     onError={(e) => {
                       const img = e.target as HTMLImageElement;
@@ -553,28 +668,59 @@ export function AnimeToWatch() {
                     }}
                   />
                 </div>
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 line-clamp-2">
+                <div className="mt-1 ml-2">
+                  <h3 className="text-lg font-semibold text-gray-900  hover:text-blue-600  line-clamp-2">
                     {anime.anime_title}
                   </h3>
                 </div>
               </Link>
-
-              <div className="px-4 pb-4">
-                <select
-                  value={anime.status || 'planning'}
-                  onChange={(e) => {
+              {/*Plan Dropdown */}
+              <div className="absolute bottom-0 w-full z-40 plan-dropdown">
+                <button
+                  onClick={(e) => {
                     e.stopPropagation();
-                    updateAnimeStatus(anime.id, e.target.value as WatchlistAnime['status']);
+                    // Close all other dropdowns first
+                    setOpenPlanDropdowns(prev => {
+                      const newState = {};
+                      newState[anime.anime_id] = !prev[anime.anime_id];
+                      return newState;
+                    });
                   }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full flex items-center justify-between px-2 bg-white border rounded-b-lg hover:bg-gray-50 text-sm"
                 >
-                  <option value="planning">Planning</option>
-                  <option value="watching">Watching</option>
-                  <option value="completed">Completed</option>
-                  <option value="dropped">Dropped</option>
-                </select>
+                  {statusOptions.find(opt => opt.id === anime.status)?.label || 'Planning to Watch'}
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+
+                {openPlanDropdowns[anime.anime_id] && (
+                  <div 
+                    className="absolute left-0 top-full mt-2 w-full bg-white border rounded-lg shadow-lg"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <div className="max-h-48 overflow-y-auto">
+                      {statusOptions.map((status) => (
+                        <button
+                          key={status.id}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            try {
+                              await updateAnimeStatus(anime.anime_id, status.id as WatchlistAnime['status']);
+                              setOpenPlanDropdowns({});
+                            } catch (error) {
+                              // Error is handled in updateAnimeStatus
+                            }
+                          }}
+                          className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
+                            anime.status === status.id ? 'bg-gray-50 font-medium' : ''
+                          }`}
+                        >
+                          {status.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button
@@ -590,86 +736,13 @@ export function AnimeToWatch() {
       )}
       
       {totalItems > 0 && (
-        <div className="flex justify-center items-center gap-2 mt-8">
-          <button
-            onClick={() => handlePageChange(1)}
-            disabled={currentPage === 1}
-            className={`px-3 py-1 rounded ${
-              currentPage === 1
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-500 text-white hover:bg-blue-600'
-            }`}
-          >
-            First
-          </button>
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className={`px-3 py-1 rounded ${
-              currentPage === 1
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-500 text-white hover:bg-blue-600'
-            }`}
-          >
-            Previous
-          </button>
-          
-          <div className="flex items-center gap-1">
-            {Array.from({ length: Math.min(5, Math.ceil(totalItems / ITEMS_PER_PAGE)) }, (_, i) => {
-              const pageNum = i + 1;
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => handlePageChange(pageNum)}
-                  className={`px-3 py-1 rounded ${
-                    currentPage === pageNum
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-            {Math.ceil(totalItems / ITEMS_PER_PAGE) > 5 && (
-              <>
-                <span>...</span>
-                <button
-                  onClick={() => handlePageChange(Math.ceil(totalItems / ITEMS_PER_PAGE))}
-                  className={`px-3 py-1 rounded ${
-                    currentPage === Math.ceil(totalItems / ITEMS_PER_PAGE)
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  {Math.ceil(totalItems / ITEMS_PER_PAGE)}
-                </button>
-              </>
-            )}
-          </div>
-
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage >= Math.ceil(totalItems / ITEMS_PER_PAGE)}
-            className={`px-3 py-1 rounded ${
-              currentPage >= Math.ceil(totalItems / ITEMS_PER_PAGE)
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-500 text-white hover:bg-blue-600'
-            }`}
-          >
-            Next
-          </button>
-          <button
-            onClick={() => handlePageChange(Math.ceil(totalItems / ITEMS_PER_PAGE))}
-            disabled={currentPage >= Math.ceil(totalItems / ITEMS_PER_PAGE)}
-            className={`px-3 py-1 rounded ${
-              currentPage >= Math.ceil(totalItems / ITEMS_PER_PAGE)
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-500 text-white hover:bg-blue-600'
-            }`}
-          >
-            Last
-          </button>
+        <div className="flex justify-center mt-8">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(totalItems / ITEMS_PER_PAGE)}
+            onPageChange={handlePageChange}
+            isLoading={isLoading || isLoadingMore}
+          />
         </div>
       )}
     </div>

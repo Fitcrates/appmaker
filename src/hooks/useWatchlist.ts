@@ -36,62 +36,51 @@ export function useWatchlist() {
       const { data, error } = await queries.getWatchlistStatus(user.id);
 
       if (error) {
-        if (!error.message?.includes('Failed to fetch')) {
-          console.error('Error fetching watchlist status:', error);
-        }
+        console.error('Error fetching watchlist:', error);
         return;
       }
 
-      const watchlistMap = (data || []).reduce((acc: { [key: number]: boolean }, item) => {
-        acc[item.anime_id] = true;
-        return acc;
-      }, {});
-
-      console.log('Watchlist map:', watchlistMap); // Debug log
-      setIsInWatchlist(watchlistMap);
-      setWatchlistItems(data || []);
+      if (data) {
+        const watchlistMap = data.reduce((acc: { [key: number]: boolean }, item: any) => {
+          acc[item.anime_id] = true;
+          return acc;
+        }, {});
+        setIsInWatchlist(watchlistMap);
+        setWatchlistItems(data);
+      }
+    } catch (error) {
+      console.error('Error fetching watchlist:', error);
     } finally {
       setIsLoading(false);
     }
   }, [user]);
 
-  useEffect(() => {
-    if (fetchTimeoutRef.current) {
-      clearTimeout(fetchTimeoutRef.current);
-    }
-    fetchTimeoutRef.current = setTimeout(fetchWatchlistStatus, 500);
-
-    return () => {
-      if (fetchTimeoutRef.current) {
-        clearTimeout(fetchTimeoutRef.current);
-      }
-    };
-  }, [fetchWatchlistStatus]);
-
   const addToWatchlist = useCallback(async (anime: Anime) => {
     if (!user) return;
 
     try {
-      const { error } = await queries.addToWatchlist?.(user.id, anime);
-      if (error) throw error;
-
-      setIsInWatchlist(prev => ({
-        ...prev,
-        [anime.mal_id]: true
-      }));
+      setIsLoading(true);
+      const { error } = await queries.addToWatchlist(user.id, anime);
       
+      if (error) {
+        console.error('Error adding to watchlist:', error);
+        return;
+      }
+
+      // Update local state
+      setIsInWatchlist(prev => ({ ...prev, [anime.mal_id]: true }));
       setWatchlistItems(prev => [...prev, {
         anime_id: anime.mal_id,
         anime_title: anime.title,
-        anime_image: anime.images.jpg.image_url
+        anime_image: anime.images?.jpg?.image_url || anime.image_url
       }]);
 
-      // Force refresh watchlist status
+      // Refetch to ensure consistency
       fetchWatchlistStatus();
-    } catch (error: any) {
-      if (!error.message?.includes('Failed to fetch')) {
-        console.error('Error adding to watchlist:', error);
-      }
+    } catch (error) {
+      console.error('Error adding to watchlist:', error);
+    } finally {
+      setIsLoading(false);
     }
   }, [user, fetchWatchlistStatus]);
 
@@ -99,22 +88,40 @@ export function useWatchlist() {
     if (!user) return;
 
     try {
-      const { error } = await queries.removeFromWatchlist?.(user.id, animeId);
-      if (error) throw error;
+      setIsLoading(true);
+      const { error } = await queries.removeFromWatchlist(user.id, animeId);
 
+      if (error) {
+        console.error('Error removing from watchlist:', error);
+        return;
+      }
+
+      // Update local state
       setIsInWatchlist(prev => {
         const newState = { ...prev };
         delete newState[animeId];
         return newState;
       });
-      
       setWatchlistItems(prev => prev.filter(item => item.anime_id !== animeId));
-    } catch (error: any) {
-      if (!error.message?.includes('Failed to fetch')) {
-        console.error('Error removing from watchlist:', error);
-      }
+
+      // Refetch to ensure consistency
+      fetchWatchlistStatus();
+    } catch (error) {
+      console.error('Error removing from watchlist:', error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [user]);
+  }, [user, fetchWatchlistStatus]);
+
+  // Fetch watchlist status on mount and when user changes
+  useEffect(() => {
+    if (user) {
+      fetchWatchlistStatus();
+    } else {
+      setIsInWatchlist({});
+      setWatchlistItems([]);
+    }
+  }, [user, fetchWatchlistStatus]);
 
   return {
     isInWatchlist,
@@ -122,5 +129,6 @@ export function useWatchlist() {
     isLoading,
     addToWatchlist,
     removeFromWatchlist,
+    refetchWatchlist: fetchWatchlistStatus
   };
 }

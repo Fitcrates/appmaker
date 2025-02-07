@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
@@ -35,7 +36,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, isLoading }:
         <button
           onClick={() => onPageChange(1)}
           disabled={isLoading}
-          className="px-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50"
+          className="px-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50"
         >
           1
         </button>
@@ -43,7 +44,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, isLoading }:
 
       {/* Current Page Button */}
       <span
-        className="px-2 rounded-full bg-purple-600 text-white"
+        className="px-2 rounded-lg bg-indigo-400 text-white"
       >
         {currentPage}
       </span>
@@ -53,7 +54,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, isLoading }:
         <button
           onClick={() => onPageChange(totalPages)}
           disabled={isLoading}
-          className="px-2 rounded-full bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50"
+          className="px-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 disabled:opacity-50"
         >
           {totalPages}
         </button>
@@ -75,12 +76,12 @@ export function Pagination({ currentPage, totalPages, onPageChange, isLoading }:
           value={goToPage}
           onChange={(e) => setGoToPage(e.target.value)}
           placeholder="Page"
-          className="w-16 py-1 text-center text-gray-300 bg-gray-900 rounded-full"
+          className="w-14  text-center text-gray-300 bg-gray-900 rounded-lg"
         />
         <button
           onClick={handleGoToPage}
           disabled={isLoading || !goToPage}
-          className="px-2 bg-purple-600 text-white rounded-full hover:bg-purple-500 disabled:opacity-50"
+          className="px-2 bg-indigo-400 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50"
         >
           Go
         </button>

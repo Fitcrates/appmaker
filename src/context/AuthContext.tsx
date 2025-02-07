@@ -12,7 +12,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean }>;
-  updateProfile: (updates: { data: { name: string } }) => Promise<void>;
+  updateProfile: (updates: { data: { name: string }, customDisplayName?: string }) => Promise<void>;
   deleteAccount: () => Promise<void>;
   loading: boolean;
   sessionExpiry: Date | null;
@@ -30,12 +30,52 @@ const REFRESH_THRESHOLD = import.meta.env.VITE_REFRESH_THRESHOLD
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    // Initialize user from localStorage if available
+    const storedSession = localStorage.getItem('anime-search-session');
+    if (storedSession) {
+      try {
+        const { user, expires_at } = JSON.parse(storedSession);
+        if (new Date(expires_at) > new Date()) {
+          return user;
+        } else {
+          localStorage.removeItem('anime-search-session');
+        }
+      } catch (error) {
+        console.error('Error parsing stored session:', error);
+        localStorage.removeItem('anime-search-session');
+      }
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
-  const [sessionExpiry, setSessionExpiry] = useState<Date | null>(null);
+  const [sessionExpiry, setSessionExpiry] = useState<Date | null>(() => {
+    // Initialize session expiry from localStorage if available
+    const storedSession = localStorage.getItem('anime-search-session');
+    if (storedSession) {
+      try {
+        const { expires_at } = JSON.parse(storedSession);
+        const expiryDate = new Date(expires_at);
+        if (expiryDate > new Date()) {
+          return expiryDate;
+        }
+      } catch (error) {
+        console.error('Error parsing stored session expiry:', error);
+      }
+    }
+    return null;
+  });
   const sessionCheckInterval = useRef<NodeJS.Timeout>();
   const lastSessionCheck = useRef<number>(0);
   const navigate = useNavigate();
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   // Enhanced session refresh
   const refreshSession = useCallback(async () => {
@@ -48,15 +88,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session) {
         setUser(session.user);
         setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
-        // Store session in localStorage for persistence
         localStorage.setItem('anime-search-session', JSON.stringify({
           user: session.user,
           expires_at: new Date(Date.now() + SESSION_TIMEOUT).toISOString()
         }));
+      } else {
+        setUser(null);
+        setSessionExpiry(null);
+        localStorage.removeItem('anime-search-session');
       }
     } catch (error) {
-      console.error('Error in refreshSession:', error);
-      await signOut();
+      console.error('Error refreshing session:', error);
+      setUser(null);
+      setSessionExpiry(null);
+      localStorage.removeItem('anime-search-session');
     }
   }, []);
 
@@ -65,51 +110,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event, session?.user?.id, {
-        pathname: window.location.pathname,
-        isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-      });
+      console.log('Auth state change:', event, session?.user?.id);
       
-      // Only proceed if component is still mounted
       if (!mounted) return;
       
-      if (event === 'SIGNED_IN') {
-        if (!session) return;
-        
-        try {
-          // Check if we're in the callback page
+      try {
+        if (event === 'SIGNED_IN' && session) {
+          // Set basic user state immediately
+          setUser(session.user);
+          setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+          
+          // Update custom name in background
+          updateSessionWithCustomName(session).catch(console.error);
+          
           if (window.location.pathname === '/auth/callback') {
-            console.log('In callback page, letting callback handle navigation');
-            return;
+            navigate('/', { replace: true });
           }
-
-          console.log('Setting user state after sign in');
+        } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out');
+          setUser(null);
+          setSessionExpiry(null);
+          localStorage.removeItem('anime-search-session');
+          navigate('/', { replace: true });
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          console.log('Token refreshed');
+          // Set basic user state immediately
           setUser(session.user);
           setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
-          localStorage.setItem('anime-search-session', JSON.stringify({
-            user: session.user,
-            expires_at: new Date(Date.now() + SESSION_TIMEOUT).toISOString()
-          }));
-        } catch (error) {
-          console.error('Error in SIGNED_IN:', error);
-          setUser(session.user);
-          setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+          
+          // Update custom name in background
+          updateSessionWithCustomName(session).catch(console.error);
         }
-      } else if (event === 'SIGNED_OUT') {
-        console.log('User signed out');
-        setUser(null);
-        setSessionExpiry(null);
-        localStorage.removeItem('anime-search-session');
-        navigate('/login', { replace: true });
-      } else if (event === 'TOKEN_REFRESHED') {
-        console.log('Token refreshed');
-        if (session && mounted) {
+      } catch (error) {
+        console.error('Error in auth state change handler:', error);
+        if (session?.user) {
           setUser(session.user);
           setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
-          localStorage.setItem('anime-search-session', JSON.stringify({
-            user: session.user,
-            expires_at: new Date(Date.now() + SESSION_TIMEOUT).toISOString()
-          }));
         }
       }
       
@@ -122,14 +158,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        if (mounted && session) {
+          // Set basic user state immediately
+          setUser(session.user);
+          setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+          
+          // Update custom name in background
+          updateSessionWithCustomName(session).catch(console.error);
+        } else if (mounted) {
+          setUser(null);
+          setSessionExpiry(null);
+        }
+        
         if (mounted) {
-          if (session) {
-            setUser(session.user);
-            setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
-          } else {
-            setUser(null);
-            setSessionExpiry(null);
-          }
           setLoading(false);
         }
       } catch (error) {
@@ -142,25 +183,106 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     checkSession();
 
-    // Cleanup function
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
   }, [navigate]);
 
-  // Session expiry checker
-  useEffect(() => {
-    if (!user || !sessionExpiry) return;
+  // Function to fetch and update custom display name
+  const fetchAndUpdateCustomName = async (sessionUser: User): Promise<User> => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('custom_display_name')
+        .eq('id', sessionUser.id)
+        .single();
 
-    const checkInterval = setInterval(() => {
-      if (sessionExpiry && new Date() > sessionExpiry) {
-        signOut().catch(console.error);
+      if (error) throw error;
+
+      if (data?.custom_display_name) {
+        // Create a new user object with the custom name
+        return {
+          ...sessionUser,
+          user_metadata: {
+            ...sessionUser.user_metadata,
+            custom_name: data.custom_display_name
+          }
+        };
       }
-    }, 60000); // Check every minute
+      return sessionUser;
+    } catch (error) {
+      console.error('Error fetching custom display name:', error);
+      return sessionUser;
+    }
+  };
 
-    return () => clearInterval(checkInterval);
-  }, [user, sessionExpiry]);
+  // Function to update session with custom name
+  const updateSessionWithCustomName = async (session: any) => {
+    if (!session?.user) return null;
+    
+    try {
+      const updatedUser = await fetchAndUpdateCustomName(session.user);
+      
+      // Store the updated session
+      const sessionData = {
+        user: updatedUser,
+        expires_at: new Date(Date.now() + SESSION_TIMEOUT).toISOString()
+      };
+      
+      localStorage.setItem('anime-search-session', JSON.stringify(sessionData));
+      setUser(updatedUser);
+      setSessionExpiry(new Date(Date.now() + SESSION_TIMEOUT));
+      
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating session:', error);
+      return session.user;
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      setUser(null);
+      setSessionExpiry(null);
+      localStorage.removeItem('anime-search-session');
+      navigate('/', { replace: true });
+    } catch (error: any) {
+      console.error('Error in signOut:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      const redirectUrl = import.meta.env.DEV
+        ? 'http://localhost:3000/auth/callback'
+        : 'https://animecrates.netlify.app/auth/callback';
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
+        }
+      });
+      
+      if (error) throw error;
+      console.log('Google sign in initiated:', data);
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+      throw error;
+    }
+  };
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
@@ -212,52 +334,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      console.log('Starting Google sign in', { isMobile });
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin + '/auth/callback',
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent'
-          },
-          skipBrowserRedirect: false // Ensure redirect happens
-        }
-      });
-      
-      if (error) throw error;
-      console.log('Sign in initiated', data);
-    } catch (error) {
-      console.error('Error signing in with Google:', error);
-      throw error;
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      setUser(null);
-      setSessionExpiry(null);
-      localStorage.removeItem('anime-search-session');
-      navigate('/', { replace: true });
-    } catch (error: any) {
-      console.error('Error in signOut:', error);
-      throw error;
-    }
-  };
-
   const resendVerificationEmail = async (email: string) => {
+    const redirectUrl = import.meta.env.DEV
+      ? 'http://localhost:3000/auth/callback'
+      : 'https://animecrates.netlify.app/auth/callback';
+
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: email.toLowerCase().trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: redirectUrl,
       },
     });
 
@@ -315,7 +401,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateProfile = async (updates: { data: { name: string } }) => {
+  const updateProfile = async (updates: { data: { name: string }, customDisplayName?: string }) => {
     if (!user) throw new Error('No user logged in');
 
     try {
@@ -333,14 +419,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: user.id,
           name: updates.data.name,
           email: user.email,
+          custom_display_name: updates.customDisplayName,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
 
       if (profileError) throw profileError;
 
-      // Update local user state with the new data from auth
+      // Update local user state with the new data
       if (authData.user) {
+        if (updates.customDisplayName) {
+          authData.user.user_metadata = {
+            ...authData.user.user_metadata,
+            name: updates.customDisplayName
+          };
+        }
         setUser(authData.user);
       }
 

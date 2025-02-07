@@ -15,12 +15,15 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     detectSessionInUrl: true,
     storage: window?.localStorage,
     flowType: 'pkce',  // Use PKCE flow for better mobile support
-    debug: true,  // Enable debug logs to help troubleshoot
+    debug: import.meta.env.DEV,  // Enable debug logs only in development
     storageKey: 'anime-search-auth',  // Custom storage key
     cookieOptions: {
       secure: window.location.protocol === 'https:',
-      sameSite: 'Lax'
-    }
+    },
+    // Set redirect URLs based on environment
+    redirectTo: import.meta.env.DEV 
+      ? 'http://localhost:3000'  // Development
+      : 'https://animecrates.netlify.app'  // Production
   },
   global: {
     headers: {

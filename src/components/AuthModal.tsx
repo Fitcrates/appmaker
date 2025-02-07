@@ -70,23 +70,21 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Please fill in all fields');
-      return;
-    }
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
 
     try {
-      setIsLoading(true);
       setError('');
-      await signIn(email, password);
-      onClose(); // Close modal after successful login
-    } catch (err: any) {
-      console.error('Login error:', err);
-      if (err.message.includes('Invalid login credentials')) {
-        setError('Invalid email or password. Please try again or reset your password.');
+      setIsLoading(true);
+      await signIn(email.trim(), password);
+      onClose(); // Close modal after successful sign-in
+    } catch (error: any) {
+      console.error('Sign in error:', error);
+      if (error.message.includes('Email not confirmed')) {
+        setError('Please verify your email address. Check your inbox for a verification link.');
       } else {
-        setError(err.message || 'Failed to log in. Please try again.');
+        setError(error.message || 'Failed to sign in');
       }
     } finally {
       setIsLoading(false);
@@ -98,10 +96,11 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       setError('');
       setIsLoading(true);
       await signInWithGoogle();
-      // Don't close the modal here - Google OAuth will redirect the page
-    } catch (err: any) {
-      console.error('Google auth error:', err);
-      setError('Failed to Log in with Google. Please try again.');
+      onClose(); // Close modal after initiating Google sign-in
+    } catch (error: any) {
+      console.error('Google sign in error:', error);
+      setError(error.message || 'Failed to sign in with Google');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -212,14 +211,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </div>
             </div>
           </div>
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            if (isLogin) {
-              handleLogin();
-            } else {
-              handleSignUp();
-            }
-          }} className="space-y-4">
+          <form onSubmit={handleSignIn} className="space-y-4">
             {!isLogin && (
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">

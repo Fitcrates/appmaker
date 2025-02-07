@@ -26,10 +26,10 @@ export const AnimePreview: React.FC<AnimePreviewProps> = ({ isOpen, onClose, ani
       try {
         setIsLoading(true);
         console.log('Loading rating for anime:', anime.mal_id);
-        const rating = await queries.getUserRating(user.id, anime.mal_id);
+        const { data: rating } = await queries.getUserRating(user.id, anime.mal_id);
         if (isMounted) {
           console.log('Received rating:', rating);
-          setUserRating(rating);
+          setUserRating(rating || 0);
         }
       } catch (error) {
         console.error('Error loading rating:', error);
@@ -73,33 +73,29 @@ export const AnimePreview: React.FC<AnimePreviewProps> = ({ isOpen, onClose, ani
           user_id: user.id,
           anime_id: anime.mal_id,
           rating: rating,
+          anime_title: anime.title,
+          anime_image: anime.images?.jpg?.image_url,
+          genres: anime.genres,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id,anime_id'
         });
 
       if (error) {
-        console.error('Database error:', error);
         throw error;
       }
 
-      console.log('Rating saved successfully');
       setUserRating(rating);
-      setRatingMessage('Rating saved!');
+      setRatingMessage('Rating saved successfully!');
       
-      // Clear success message after 2 seconds
-      const timeoutId = setTimeout(() => {
-        if (isOpen) { // Only clear if modal is still open
-          setRatingMessage('');
-        }
-      }, 2000);
-
-      // Cleanup timeout if component unmounts or modal closes
-      return () => clearTimeout(timeoutId);
+      // Clear message after a delay
+      setTimeout(() => {
+        setRatingMessage('');
+      }, 3000);
+      
     } catch (error) {
       console.error('Error saving rating:', error);
-      setRatingMessage('Failed to save rating');
-      setUserRating(0); // Reset rating on error
+      setRatingMessage('Error: Could not save rating');
     } finally {
       setIsLoading(false);
     }
@@ -120,12 +116,12 @@ export const AnimePreview: React.FC<AnimePreviewProps> = ({ isOpen, onClose, ani
       onTouchEnd={(e) => e.stopPropagation()}
     >
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black opacity-60 backdrop-blur" />
+      <div className="fixed inset-0 bg-black opacity-90 " />
       
       {/* Preview Content */}
       <div className="fixed inset-0 sm:inset-4 md:inset-8 flex items-center justify-center p-4">
         <div 
-          className="bg-white w-full max-w-2xl rounded-lg shadow-xl overflow-hidden max-h-[90vh] flex flex-col"
+          className="modalOpen w-full max-w-2xl rounded-lg shadow-xl overflow-hidden max-h-[90vh] flex flex-col"
           onClick={handleContentClick}
           onTouchStart={handleContentClick}
           onTouchMove={handleContentClick}
@@ -199,7 +195,7 @@ export const AnimePreview: React.FC<AnimePreviewProps> = ({ isOpen, onClose, ani
                   </div>
                 </div>
 
-                <div className="mt-6 sticky bottom-0 bg-white py-3">
+                <div className="mt-6 sticky bottom-0 modalOpenpy-3">
                   <Link
                     to={`/anime/${anime.mal_id}`}
                     onClick={onClose}

@@ -15,9 +15,27 @@ const UserAccountSettings = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user?.user_metadata?.name) {
-      setDisplayName(user.user_metadata.name);
-    }
+    const fetchCustomDisplayName = async () => {
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('custom_display_name')
+            .eq('id', user.id)
+            .single();
+
+          if (error) throw error;
+          
+          // Use custom display name if available, otherwise use the one from auth metadata
+          setDisplayName(data?.custom_display_name || user.user_metadata?.name || '');
+        } catch (err) {
+          console.error('Error fetching custom display name:', err);
+          setDisplayName(user.user_metadata?.name || '');
+        }
+      }
+    };
+
+    fetchCustomDisplayName();
   }, [user]);
 
   useEffect(() => {
@@ -43,7 +61,10 @@ const UserAccountSettings = () => {
     setSuccessMessage(null);
 
     try {
-      await updateProfile({ data: { name: displayName.trim() } });
+      await updateProfile({
+        data: { name: displayName.trim() },
+        customDisplayName: displayName.trim()
+      });
       setSuccessMessage('Display name updated successfully');
     } catch (err: any) {
       console.error('Error updating display name:', err);

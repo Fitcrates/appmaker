@@ -7,31 +7,37 @@ interface AnimeTrailerProps {
   onTrailerClick: () => void;
 }
 
-export const AnimeTrailer: React.FC<AnimeTrailerProps> = ({
-  youtubeId,
-  embedUrl,
-  onTrailerClick,
-}) => {
+export function AnimeTrailer({ youtubeId, embedUrl, onTrailerClick }: AnimeTrailerProps) {
   if (!youtubeId) return null;
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onTrailerClick();
+  };
+
   return (
-    <div className="relative group cursor-pointer w-[300px]" onClick={onTrailerClick}>
-      <div className="relative aspect-video overflow-hidden rounded-lg">
+    <div 
+      className="relative group cursor-pointer rounded-lg overflow-hidden"
+      onClick={handleClick}
+      style={{ maxWidth: '400px' }}
+    >
+      <div className="relative aspect-video">
         <img
           src={`https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`}
           alt="Trailer thumbnail"
-          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300"
+          className="absolute inset-0 w-full h-full object-cover rounded-lg"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
           }}
         />
-        <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition-colors flex items-center justify-center">
-          <div className="w-16 h-16 rounded-full bg-red-600 group-hover:bg-red-700 transition-colors flex items-center justify-center">
-            <Play className="w-8 h-8 text-white ml-1" />
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center group-hover:bg-opacity-40 transition-opacity">
+          <div className="bg-white rounded-full p-3 transform group-hover:scale-110 transition-transform">
+            <Play className="w-6 h-6 text-black" />
           </div>
         </div>
       </div>
     </div>
   );
-};
+}

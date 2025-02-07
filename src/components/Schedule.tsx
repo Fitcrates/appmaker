@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Star } from 'lucide-react';
 import { LazyLoad } from './LazyLoad';
 import { fetchFromAPI } from '../utils/api';
@@ -15,18 +15,23 @@ interface PaginationData {
   current_page: number;
 }
 
+const getActiveDay = () => {
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const today = new Date().getDay();
+  return days[today];
+};
+
 export function Schedule() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [schedule, setSchedule] = useState<any[]>([]);
   const [selectedAnime, setSelectedAnime] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1'));
+  const [activeDay, setActiveDay] = useState(searchParams.get('day') || getActiveDay());
   const [pagination, setPagination] = useState<PaginationData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const location = useLocation();
   const { isInWatchlist, addToWatchlist, removeFromWatchlist } = useWatchlist();
-  const [activeDay, setActiveDay] = useState(() => {
-    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const today = new Date().getDay();
-    return days[today];
-  });
+  const [imageLoadError, setImageLoadError] = useState<{ [key: number]: boolean }>({});
 
   const itemsPerPage = 12;
 
@@ -39,6 +44,46 @@ export function Schedule() {
     { id: 'saturday', label: 'Saturday' },
     { id: 'sunday', label: 'Sunday' },
   ];
+
+  const SkeletonCard = () => (
+    <div className="relative bg-white rounded-lg shadow-lg overflow-hidden animate-pulse">
+      <div className="relative aspect-[3/4]">
+        <div className="absolute inset-0 bg-gray-200" />
+      </div>
+      <div className="p-4 mt-8 h-28">
+        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-1">
+            <div className="h-4 w-4 bg-gray-200 rounded-full"></div>
+            <div className="h-3 bg-gray-200 rounded w-24"></div>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="h-4 w-4 bg-gray-200 rounded-full"></div>
+            <div className="h-3 bg-gray-200 rounded w-32"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderDaySelector = () => (
+    <div className="flex overflow-x-auto gap-2 mb-6 pb-2 -mx-2 px-2">
+      {days.map((day) => (
+        <button
+          key={day.id}
+          onClick={() => setActiveDay(day.id)}
+          className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+            activeDay === day.id
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          {day.label}
+        </button>
+      ))}
+    </div>
+  );
 
   useEffect(() => {
     const fetchSchedule = async () => {
@@ -62,44 +107,67 @@ export function Schedule() {
     fetchSchedule();
   }, [activeDay, currentPage]);
 
-  // Reset to page 1 when changing days
   useEffect(() => {
-    setCurrentPage(1);
-  }, [activeDay]);
+    const params = new URLSearchParams(searchParams);
+    if (currentPage !== 1) {
+      params.set('page', currentPage.toString());
+    } else {
+      params.delete('page');
+    }
+    if (activeDay !== getActiveDay()) {
+      params.set('day', activeDay);
+    } else {
+      params.delete('day');
+    }
+    setSearchParams(params);
+  }, [currentPage, activeDay]);
+
+  useEffect(() => {
+    const page = parseInt(searchParams.get('page') || '1');
+    const day = searchParams.get('day') || getActiveDay();
+    setCurrentPage(page);
+    setActiveDay(day);
+  }, [searchParams]);
+
+  const handleImageError = (animeId: number) => {
+    setImageLoadError(prev => ({ ...prev, [animeId]: true }));
+  };
+
+  if (isLoading) {
+    return (
+      <div className="px-4 lg:px-48">
+        <h2 className="text-2xl font-bold mb-6">Airing Schedule</h2>
+        {renderDaySelector()}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          {[...Array(12)].map((_, index) => (
+            <SkeletonCard key={index} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-0">
+    <div className="space-y-6 px-4 md:px-12 lg:px-24 xl:px-48 mt-12 ">
       <h2 className="text-2xl font-bold mb-6">Airing Schedule</h2>
       
       {/* Day selector */}
-      <div className="flex overflow-x-auto gap-2 mb-6 pb-2 -mx-2 px-2">
-        {days.map((day) => (
-          <button
-            key={day.id}
-            onClick={() => setActiveDay(day.id)}
-            className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
-              activeDay === day.id
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {day.label}
-          </button>
-        ))}
-      </div>
+      {renderDaySelector()}
 
       {isLoading ? (
-        <div className="flex justify-center items-center min-h-[200px]">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+        <div className="space-y-6 px-4 md:px-24 lg:px-48">
+          {[...Array(12)].map((_, index) => (
+            <SkeletonCard key={index} />
+          ))}
         </div>
       ) : schedule.length === 0 ? (
         <div className="text-center text-gray-500 py-8">
           No anime scheduled for {activeDay}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-          {schedule.map((anime) => (
-            <div key={anime.mal_id} className="relative group">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {schedule.map((anime, index) => (
+            <div key={`${activeDay}-${anime.mal_id}-${index}`} className="relative group">
               <Link
                 to={`/anime/${anime.mal_id}`}
                 className="block"
@@ -113,9 +181,11 @@ export function Schedule() {
                   <div className="relative aspect-[3/4]">
                     <LazyLoad>
                       <img
-                        src={anime.images.jpg.image_url}
+                        src={imageLoadError[anime.mal_id] ? '/124145l.webp' : anime.images.jpg.image_url}
                         alt={anime.title}
-                        className="absolute inset-0 w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300"
+                        onError={() => handleImageError(anime.mal_id)}
+                        loading="lazy"
                       />
                     </LazyLoad>
                     {anime.score && (
@@ -125,8 +195,8 @@ export function Schedule() {
                       </div>
                     )}
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-medium text-sm line-clamp-2 mb-2">{anime.title}</h3>
+                  <div className=" h-24 p-2">
+                    <h3 className="font-medium text-sm line-clamp-2 mb-2 ">{anime.title}</h3>
                     {(anime.broadcast || anime.producers?.length > 0) && (
                       <div className="text-xs text-gray-600 space-y-1">
                         {anime.broadcast && (

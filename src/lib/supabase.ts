@@ -4,7 +4,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables');
+  throw new Error('Missing environment variables for Supabase configuration');
 }
 
 // Request management
@@ -25,13 +25,29 @@ async function retryRequest<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
   }
 }
 
-// Create Supabase client with custom fetch implementation
+// Debug environment
+console.log('Current environment:', {
+  isDev: import.meta.env.DEV,
+  mode: import.meta.env.MODE,
+  baseUrl: import.meta.env.BASE_URL,
+});
+
+// Get the site URL based on environment
+const getSiteUrl = () => {
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  return isLocalhost ? `${window.location.protocol}//${window.location.host}` : 'https://animecrates.netlify.app';
+};
+
+// Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
+    flowType: 'pkce',
+    detectSessionInUrl: true,
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: localStorage,
+    storage: window.localStorage,
+    storageKey: 'anime-search-auth-token',
+    redirectTo: `${getSiteUrl()}/auth/callback`,
   },
   global: {
     headers: {
@@ -66,7 +82,7 @@ export const queries = {
         throw error;
       }
       
-      return data?.rating ?? 0;
+      return { data: data?.rating ?? 0, error: null };
     });
 
     // Cache the promise
@@ -94,13 +110,17 @@ export const queries = {
 
     // Create new request
     const promise = retryRequest(async () => {
-      const result = await supabase
+      const { data, error } = await supabase
         .from('anime_watchlist')
         .select('id, anime_id, anime_title, anime_image, status')
         .eq('user_id', userId);
-      
-      if (result.error) throw result.error;
-      return result;
+
+      if (error) {
+        console.error('Error fetching watchlist:', error);
+        throw error;
+      }
+
+      return { data, error: null };
     });
 
     // Cache the promise
@@ -117,13 +137,10 @@ export const queries = {
   },
 
   addToWatchlist: async (userId: string, anime: { mal_id: number; title: string; images: { jpg: { image_url: string } } }) => {
-    const key = `add-watchlist-${userId}-${anime.mal_id}`;
-    
-    // Don't cache this operation, but still use retry logic
-    return retryRequest(async () => {
-      const result = await supabase
+    try {
+      const { data, error } = await supabase
         .from('anime_watchlist')
-        .insert({
+        .upsert({
           user_id: userId,
           anime_id: anime.mal_id,
           anime_title: anime.title,
@@ -132,31 +149,42 @@ export const queries = {
         })
         .select()
         .single();
-      
-      // Invalidate watchlist cache
-      const watchlistKey = `watchlist-${userId}`;
-      delete requestCache[watchlistKey];
-      
-      return result;
-    });
+
+      if (error) {
+        console.error('Error adding to watchlist:', error);
+        throw error;
+      }
+
+      // Clear cache after modification
+      queries.clearCache();
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error in addToWatchlist:', error);
+      return { data: null, error };
+    }
   },
 
   removeFromWatchlist: async (userId: string, animeId: number) => {
-    const key = `remove-watchlist-${userId}-${animeId}`;
-    
-    // Don't cache this operation, but still use retry logic
-    return retryRequest(async () => {
-      const result = await supabase
+    try {
+      const { data, error } = await supabase
         .from('anime_watchlist')
-        .delete({ anime_id: animeId })
-        .eq('user_id', userId);
-      
-      // Invalidate watchlist cache
-      const watchlistKey = `watchlist-${userId}`;
-      delete requestCache[watchlistKey];
-      
-      return result;
-    });
+        .delete()
+        .eq('user_id', userId)
+        .eq('anime_id', animeId)
+        .select();
+
+      if (error) {
+        console.error('Error removing from watchlist:', error);
+        throw error;
+      }
+
+      // Clear cache after modification
+      queries.clearCache();
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error in removeFromWatchlist:', error);
+      return { data: null, error };
+    }
   },
 
   // Helper method to clear all caches
