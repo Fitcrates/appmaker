@@ -687,7 +687,7 @@ function GenrePage() {
         <div className="absolute inset-0 flex items-center justify-center w-full h-full">
           <video
             className="w-full h-full object-cover"
-            src="/mylivewallpapers-com-Gohan-Dragon-Ball-Z-4K.mp4"
+            src="media/mylivewallpapers-com-Gohan-Dragon-Ball-Z-4K.mp4"
             autoPlay
             loop
             muted
