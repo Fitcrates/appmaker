@@ -2,19 +2,15 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ command, mode }) => ({
+export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
   server: {
-    port: 3000,
+    port: 5173,
     host: true,
     strictPort: true,
-  },
-  define: {
-    'import.meta.env.DEV': JSON.stringify(mode === 'development'),
-    'import.meta.env.PROD': JSON.stringify(mode === 'production'),
   },
   build: {
     target: 'esnext',
@@ -23,8 +19,13 @@ export default defineConfig(({ command, mode }) => ({
       output: {
         manualChunks: {
           'vendor': ['react', 'react-dom', 'react-router-dom'],
-        }
-      }
-    }
-  }
-}));
+          'supabase': ['@supabase/supabase-js'],
+        },
+      },
+    },
+  },
+  preview: {
+    port: 5173,
+    host: true,
+  },
+});
