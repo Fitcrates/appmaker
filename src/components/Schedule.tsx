@@ -220,7 +220,7 @@ export function Schedule() {
                         loading="lazy"
                       />
                       
-                      <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md rounded-full px-3 py-1.5 flex items-center">
+                      <div className="absolute top-3 left-1 sm:left-3 bg-black/70 backdrop-blur-md rounded-full px-3 py-1.5 flex items-center">
                         <Star className="w-4 h-4 text-[#F59E0B]" />
                         <span className="ml-1.5 text-sm font-mono text-white">{anime.score || '??'}</span>
                       </div>
