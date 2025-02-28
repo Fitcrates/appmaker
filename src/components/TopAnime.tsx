@@ -81,7 +81,7 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
   }
 
   return (
-    <div className=" max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8">
+    <div id="topAnime" className=" max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8">
       <div className="flex  justify-between items-center mb-12">
         <h2 className="text-3xl font-bold text-[#F2F5F7] tracking-tight mt-24">
           <span className="bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon ">
@@ -120,7 +120,7 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
           <div key={anime.mal_id} className="relative group">
             <LazyLoad>
               <div
-                className="relative  rounded-xl shadow-lg overflow-hidden 
+                className="relative   rounded-xl shadow-lg overflow-hidden 
                 transition-all duration-300 hover:scale-105 hover:shadow-xl 
                 border border-white/20 hover:border-[#fa448c]/40 cursor-pointer flex flex-col h-[21rem] sm:h-[28rem] "
                 onClick={() => setSelectedAnime(anime)}
@@ -135,7 +135,7 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
                     loading="lazy"
                   />
                   
-                  <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md rounded-full px-3 py-1.5 flex items-center">
+                  <div className="absolute top-3 left-1 sm:left-3 bg-black/70 backdrop-blur-md rounded-full px-3 py-1.5 flex items-center">
                     <Star className="w-4 h-4 text-[#F59E0B]" />
                     <span className="ml-1.5 text-sm font-mono text-white">{anime.score || '??'}</span>
                   </div>
