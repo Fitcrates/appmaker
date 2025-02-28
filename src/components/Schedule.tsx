@@ -74,7 +74,7 @@ export function Schedule() {
   );
 
   const renderDaySelector = () => (
-    <div className="flex  gap-2 mb-6 pb-2 -mx-2 px-2 mt-6">
+    <div className="flex flex-wrap   gap-2 mb-6 pb-2 px-1 sm:px-0  mt-6">
       {days.map((day) => (
         <button
           key={day.id}
@@ -152,38 +152,38 @@ export function Schedule() {
   };
 
   return (
-    <div className="max-w-[100rem] space-y-6 mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-[#F2F5F7] tracking-tight mt-12 tilt-neon">
-          <span className="bg-clip-text text-[#EC4899] drop-shadow-[0_0_8px_#fa448c]">
-            Airing Schedule
-          </span>
-        </h2>
-
-        <div className="relative mt-12  flex items-center">
-          <span className="bg-clip-text text-[#fd5454] drop-shadow-[0_2px_12px_#fd5454] tilt-neon2 px-4 py-2">
-          Showing page {currentPage} of {pagination?.last_visible_page || 1}
-          </span>
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            xmlnsXlink="http://www.w3.org/1999/xlink" 
-            viewBox="0 0 80 80"
-            className="absolute -right-2 w-14 h-14 stroke-[#fd5454] drop-shadow-[0_0_8px_#fd5454] stroke-2 fill-none"
-          >
-            <defs>
-              <path id="cLinkPath" d="M-1-1v21.3h10.1v39.4h-10.1v21.3h82v-82z"></path>
-            </defs>
-            <clipPath id="cLinkMask">
-              <use xlinkHref="#cLinkPath" overflow="visible"></use>
-            </clipPath>
-            <path 
-              className="drop-shadow-[0_0_8px_#fd5454]" 
-              d="M5 24c6.1-13.3 19.5-22.5 35-22.5 21.3 0 38.5 17.2 38.5 38.5s-17.2 38.5-38.5 38.5c-15.5 0-28.9-9.2-35-22.5"
-            />
-          </svg>
-        </div>
-        </div>
-
+    <div className="max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8">
+    <div className="flex justify-between items-center flex-wrap">
+      <h2 className="font-bold text-[#F2F5F7] tracking-tight mt-12 w-auto sm:w-auto">
+        <span className="bg-clip-text text-[#EC4899] drop-shadow-[0_0_8px_#fa448c] tilt-neon flex flex-wrap">
+          Airing Schedule
+        </span>
+      </h2>
+  
+      <div className="relative mt-12 flex items-center">
+        <span className="bg-clip-text text-[#fd5454] drop-shadow-[0_2px_12px_#fd5454] tilt-neon2 px-4 py-2">
+          Page {currentPage} of {pagination?.last_visible_page || 1}
+        </span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          xmlnsXlink="http://www.w3.org/1999/xlink"
+          viewBox="0 0 80 80"
+          className="absolute -right-0 sm:-right-2 w-14 h-14 stroke-[#fd5454] drop-shadow-[0_0_8px_#fd5454] stroke-2 fill-none"
+        >
+          <defs>
+            <path id="cLinkPath" d="M-1-1v21.3h10.1v39.4h-10.1v21.3h82v-82z"></path>
+          </defs>
+          <clipPath id="cLinkMask">
+            <use xlinkHref="#cLinkPath" overflow="visible"></use>
+          </clipPath>
+          <path
+            className="drop-shadow-[0_0_8px_#fd5454]"
+            d="M5 24c6.1-13.3 19.5-22.5 35-22.5 21.3 0 38.5 17.2 38.5 38.5s-17.2 38.5-38.5 38.5c-15.5 0-28.9-9.2-35-22.5"
+          />
+        </svg>
+      </div>
+    </div>
+  
         
 
       {renderDaySelector()}
@@ -207,11 +207,11 @@ export function Schedule() {
                   <div
                     className="relative rounded-xl shadow-lg overflow-hidden 
                     transition-all duration-300 hover:scale-105 hover:shadow-xl 
-                    border border-white/20 hover:border-[#fa448c]/40 cursor-pointer flex flex-col h-[28rem] "
+                    border border-white/20 hover:border-[#fa448c]/40 cursor-pointer flex flex-col h-[23rem] sm:h-[28rem] "
                     onClick={() => setSelectedAnime(anime)}
                   >
                     {/* Image Container */}
-                    <div className="relative rounded-t-xl overflow-t-hidden aspect-[3/4] max-h-[20rem]">
+                    <div className="relative rounded-t-xl overflow-t-hidden aspect-[3/4] max-h-[16rem] sm:max-h-[20rem]">
                       <img
                         src={imageLoadError[anime.mal_id] ? '/124145l.webp' : anime.images.jpg.image_url}
                         alt={anime.title}
@@ -233,7 +233,7 @@ export function Schedule() {
                         {anime.title}
                       </h3>
                       
-                      <div className="mt-2 space-y-1.5">
+                      <div className="mt-1 sm:mt-2 space-y-1.5">
                         {anime.broadcast && (
                           <div className="flex items-center gap-2 text-white/80">
                             <Clock className="w-4 h-4" />
@@ -260,7 +260,7 @@ export function Schedule() {
                   </div>
                 </LazyLoad>
 
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
                   <div className="flex gap-2">
                     <Tooltip content={isInWatchlist[anime.mal_id] ? "Remove from Watchlist" : "Add to Watchlist"}>
                       <button
@@ -319,8 +319,11 @@ export function Schedule() {
               className="flex justify-center"
             />
           </div>
+
         </>
       )}
+      
     </div>
+    
   );
 }
