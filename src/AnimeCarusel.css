@@ -1,0 +1,263 @@
+/* AnimeCarousel.css */
+.carousel-container {
+  position: relative;
+  width: 100%;
+  height: 70vh; /* Consider a min-height value here */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  overflow: hidden; /* Prevent content from spilling out */
+}
+
+.carousel {
+  position: relative;
+  width: 90%; 
+  height: 100%; /* Match parent height */
+  perspective: 700px;
+  transform-style: preserve-3d;
+}
+.carousel-title {
+  position: absolute;
+  top: 50%; /* Changed from 40% to reduce overlap */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 6rem;
+  /* Responsive font sizing */
+  font-size: clamp(2rem, 6vw, 6rem);
+  font-weight: bold;
+  text-align: center;
+  z-index: 10;
+  pointer-events: none;
+  white-space: nowrap;
+  text-shadow: 0 0 10px rgba(78, 241, 214, 0.8);
+}
+  
+.cards-container {
+  position: relative;
+  width: 100%;
+  height: 100%; 
+  transform-style: preserve-3d;
+  transform: rotateX(-1deg);
+  animation: rotate 30s linear infinite;
+}
+  
+  @keyframes rotate {
+    0% {
+      transform: rotateX(-15deg) rotateY(0deg);
+    }
+    100% {
+      transform: rotateX(-15deg) rotateY(360deg);
+    }
+  }
+  
+  .card {
+    position: absolute;
+    width: 120px;
+    height: 180px;
+    left: calc(50% - 75px); /* Center more precisely */
+    top: calc(40% - 100px); /* Center vertically */
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgb(117, 11, 255);
+    cursor: pointer;
+    transform-style: preserve-3d;
+    /* Added display flex to properly organize content */
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .card img {
+    width: 100%;
+    height: 85%; /* Reduced to make room for title */
+    object-fit: cover;
+    z-index: 4;
+  }
+  
+  /* New styles for the movie title */
+  .card .movie-title {
+    width: 100%;
+    min-height: 15%; /* Give some space for title */
+    padding: 4px;
+    background: transparent;
+    color: rgb(255, 255, 255);
+    font-size: 0.5rem;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    z-index: 5;
+  }
+  
+  .card:hover {
+    box-shadow: 0 0 20px rgb(47, 255, 238);
+  }
+  
+  .pagination {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+  }
+  
+  /* Responsive Breakpoints */
+  
+  /* Large Tablets */
+  @media (max-width: 992px) {
+    .carousel {
+      width: 700px;
+      height: 450px;
+    }
+    
+    .carousel-title {
+      font-size: 4.5rem;
+    }
+    
+    .card {
+      width: 190px;
+      height: 280px;
+      left: calc(50% - 95px);
+      top: calc(50% - 140px);
+    }
+  }
+  
+  /* Small Tablets */
+  @media (max-width: 768px) {
+    .carousel {
+      width: 550px;
+      height: 400px;
+    }
+    
+    .carousel-title {
+      font-size: 3.5rem;
+    }
+    
+    .card {
+      width: 160px;
+      height: 240px;
+      left: calc(50% - 80px);
+      top: calc(50% - 120px);
+    }
+    
+    .card .movie-title {
+      font-size: 12px;
+    }
+    
+    .cards-container {
+      transform: rotateX(-0deg);
+    }
+    
+    @keyframes rotate {
+      0% {
+        transform: rotateX(-15deg) rotateY(0deg);
+      }
+      100% {
+        transform: rotateX(-15deg) rotateY(360deg);
+      }
+    }
+  }
+  
+  /* Large Smartphones */
+  @media (max-width: 576px) {
+    .carousel {
+      width: 90%;
+      max-width: 400px;
+      height: 350px;
+      perspective: 800px;
+    }
+    
+    .carousel-title {
+      font-size: 2.5rem;
+      top: 25%;
+    }
+    
+    .card {
+      width: 130px;
+      height: 190px;
+      left: calc(50% - 65px);
+      top: calc(50% - 95px);
+    }
+    
+    .card .movie-title {
+      font-size: 10px;
+      -webkit-line-clamp: 1;
+      padding: 3px;
+    }
+    
+    .cards-container {
+      transform: rotateX(-25deg);
+    }
+    
+    @keyframes rotate {
+      0% {
+        transform: rotateX(-25deg) rotateY(0deg);
+      }
+      100% {
+        transform: rotateX(-25deg) rotateY(360deg);
+      }
+    }
+  }
+  
+  /* Small Smartphones */
+  @media (max-width: 375px) {
+    .carousel {
+      height: 320px;
+    }
+    
+    .carousel-title {
+      font-size: 2rem;
+    }
+    
+    .card {
+      width: 110px;
+      height: 160px;
+      left: calc(50% - 55px);
+      top: calc(50% - 80px);
+      border-radius: 6px;
+    }
+    
+    .cards-container {
+      transform: rotateX(-30deg);
+    }
+    
+    @keyframes rotate {
+      0% {
+        transform: rotateX(-30deg) rotateY(0deg);
+      }
+      100% {
+        transform: rotateX(-30deg) rotateY(360deg);
+      }
+    }
+    
+    .cards-container {
+      animation: rotate 40s linear infinite;
+    }
+  }
+  
+  /* Handle landscape orientation on mobile */
+  @media (max-height: 500px) and (max-width: 900px) {
+    .carousel {
+      height: 70vh;
+    }
+    
+    .card {
+      width: 120px;
+      height: 180px;
+      left: calc(50% - 60px);
+      top: calc(50% - 90px);
+    }
+    
+    .carousel-title {
+      font-size: 2.5rem;
+    }
+  }
+  
+  /* Loading and error states */
+  .loading-text, .error-text {
+    font-size: 1.5rem;
+    color: white;
+    text-align: center;
+  }
