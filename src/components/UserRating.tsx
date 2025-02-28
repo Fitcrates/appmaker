@@ -211,8 +211,8 @@ export function UserRating() {
   }, [handleAnimeDetails]);
 
   return (
-    <div className="container min-h-screen mx-auto py-2 md:py-12  backgroundMain">
-      <div className="flex flex-col md:flex-row justify-between  max-w-[100rem]  px-4 sm:px-6 lg:px-8 justify-left items-center mx-auto">
+    <div className="container min-h-screen mx-auto py-2 md:py-12 max-w-[100rem] backgroundMain ">
+      <div className="flex flex-col md:flex-row  md:justify-between gap-4  max-w-[100rem]  px-4 sm:px-6 lg:px-8 justify-start items-center mx-auto mb-12">
         <h1 className="text-3xl text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon mt-24 mb-12 ">My Ratings</h1>
 
         <div className="relative mt-6 mb-12 md:mt-24 md:mb-12 flex items-center">
@@ -271,7 +271,7 @@ export function UserRating() {
       )}
 
       {/* Ratings Grid */}
-      <div className="space-y-6 px-4 max-w-[100rem]  sm:px-6 lg:px-8 justify-left items-center mx-auto">
+      <div className="space-y-6 px-0 max-w-[100rem]  sm:px-6 lg:px-8 justify-left items-center mx-auto">
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
