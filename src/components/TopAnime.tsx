@@ -67,7 +67,7 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
 
   if (isLoading) {
     return (
-      <div className="space-y-6 px-4 md:px-24 lg:px-48 ">
+      <div className="space-y-6 px-0 md:px-24 lg:px-48 ">
         <div className="flex justify-between items-center">
           <div className="h-8 bg-gray-200 rounded w-32 animate-pulse"></div>
         </div>
@@ -81,8 +81,8 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
   }
 
   return (
-    <div id="topAnime" className="max-w-[100rem] space-y-6 mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="flex justify-between items-center mb-12">
+    <div className=" max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8">
+      <div className="flex  justify-between items-center mb-12">
         <h2 className="text-3xl font-bold text-[#F2F5F7] tracking-tight mt-24">
           <span className="bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon ">
             Top Anime
@@ -90,15 +90,15 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
         </h2>
 
 
-        <div className="relative mt-24  flex items-center">
+        <div className="relative mt-24  flex items-center ">
           <span className="bg-clip-text text-[#fd5454] drop-shadow-[0_2px_12px_#fd5454] tilt-neon2 px-4 py-2">
-          Showing page {currentPage} of {pagination?.last_visible_page || 1}
+          Page {currentPage} of {pagination?.last_visible_page || 1}
           </span>
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
             xmlnsXlink="http://www.w3.org/1999/xlink" 
             viewBox="0 0 80 80"
-            className="absolute -right-2 w-14 h-14 stroke-[#fd5454] drop-shadow-[0_0_8px_#fd5454] stroke-2 fill-none"
+            className="absolute -right-0 sm:-right-2 w-14 h-14 stroke-[#fd5454] drop-shadow-[0_0_8px_#fd5454] stroke-2 fill-none"
           >
             <defs>
               <path id="cLinkPath" d="M-1-1v21.3h10.1v39.4h-10.1v21.3h82v-82z"></path>
@@ -122,11 +122,11 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
               <div
                 className="relative  rounded-xl shadow-lg overflow-hidden 
                 transition-all duration-300 hover:scale-105 hover:shadow-xl 
-                border border-white/20 hover:border-[#fa448c]/40 cursor-pointer flex flex-col"
+                border border-white/20 hover:border-[#fa448c]/40 cursor-pointer flex flex-col h-[21rem] sm:h-[28rem] "
                 onClick={() => setSelectedAnime(anime)}
               >
                 {/* Image Container */}
-                <div className="relative rounded-t-xl overflow-t-hidden aspect-[3/4] max-h-[20rem]">
+                <div className="relative rounded-t-xl overflow-t-hidden aspect-[3/4]  max-h-[15rem] sm:max-h-[22rem]">
                   <img
                     src={imageLoadError[anime.mal_id] ? '/124145l.webp' : anime.images.jpg.image_url}
                     alt={anime.title}
@@ -142,13 +142,13 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
                 </div>
                 
                 {/* Title and Info area below the image */}
-                <div className="p-2 bg-black/20 backdrop-blur-sm border-t border-[#43b5a0]/20">
-                  <h3 className="font-medium text-[#F2F5F7] line-clamp-2 h-12 text-lg group-hover:text-white 
-                  transition-colors duration-200 w-full">
+                <div className="h-full p-2 bg-black/20 backdrop-blur-sm border-t border-[#43b5a0]/20">
+                      <h3 className="font-medium text-[#F2F5F7] line-clamp-2 text-lg group-hover:text-white 
+                      transition-colors duration-200">
                     {anime.title}
                   </h3>
                   <div className="flex items-center mt-2 opacity-70 group-hover:opacity-100 transition-all duration-300">
-                    <span className="text-xs text-[#F2F5F7]/90">
+                    <span className="text-xs text-[#F2F5F7]/90 absolute bottom-2">
                       {anime.type || 'TV'} • {anime.episodes || '??'} eps
                     </span>
                     
@@ -157,7 +157,7 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
               </div>
             </LazyLoad>
 
-            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
+            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
               <div className="flex gap-2">
               <Tooltip content={isInWatchlist[anime.mal_id] ? "Remove from Watchlist" : "Add to Watchlist"}>
                   <button
