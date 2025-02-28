@@ -63,16 +63,21 @@ const TopMoviesCarusel: React.FC = () => {
   }
 
   return (
+    <div className="max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8 ">
+    <span className='text-left tilt-neon bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] font-bold'>  Top Movies</span>
     <div className="carousel-container">
       <div className="carousel">
-        <div className="carousel-title text-[#4ef1d6] tilt-neon">TOP MOVIES</div>
+        <div className="carousel-title ">
+        <img src="/media/lucy.png" className="w-full h-auto max-w-[450px] md:max-w-[450px] lg:max-w-[600px]"></img>
+
+        </div>
         
         <div className="cards-container">
           {movies.map((movie, index) => (
             <Link 
               key={movie.mal_id}
               to={`/anime/${movie.mal_id}`}
-              className="card"
+              className="card  "
               style={{
                 transform: `rotateY(${index * (360 / movies.length)}deg) translateZ(350px)`
               }}
@@ -83,11 +88,13 @@ const TopMoviesCarusel: React.FC = () => {
                 loading="lazy"
 
               />
-              <div className="movie-title">{movie.title}</div>
+              <div className="movie-title">{movie.title}
+              </div>
             </Link>
           ))}
         </div>
       </div>
+    </div>
     </div>
   );
 };
