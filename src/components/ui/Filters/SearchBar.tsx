@@ -49,7 +49,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Search anime..."
-            className="w-full px-4 py-2 pl-10 pr-10 text-white bg-white/15 placeholder:text-white rounded-lg focus:outline-none  ring-1 ring-white/70"
+            className="w-full px-4 py-2 pl-10 pr-10 text-white bg-white/15 placeholder:text-white rounded-lg focus:outline-none  ring-1 ring-white/70 min-w-[18rem] max-w-[30rem]"
             disabled={isSearching}
           />
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-white" />
