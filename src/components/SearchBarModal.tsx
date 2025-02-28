@@ -260,7 +260,7 @@ export function SearchBarModal({ isOpen, onClose }: SearchBarModalProps) {
     <React.Fragment>
       {isOpen && (
         <div className="absolute inset-0 w-screen h-screen flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="w-4/5 max-w-4xl h-4/5 mx-auto rounded-lg shadow-lg flex flex-col backgroundMain ring-1 ring-white/80">
+          <div className="w-[95%] md:w-4/5 max-w-5xl h-4/5 mx-auto rounded-lg shadow-lg flex flex-col backgroundMain ring-1 ring-white/80">
             <button 
               className="p-2 hover:bg-red-300 rounded-full flex-shrink self-end mr-6 mt-4 text-white" 
               onClick={onClose}
@@ -334,8 +334,8 @@ export function SearchBarModal({ isOpen, onClose }: SearchBarModalProps) {
                 </label>
               </div>
             </div>
-
-            <div className="flex-1 overflow-auto p-6">
+                    {/* results */}
+            <div className="flex-1 overflow-auto px-1 md:px-6 py-4">
               {isLoading ? (
                 <div className="text-center py-6">
                   <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
