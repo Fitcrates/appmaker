@@ -52,7 +52,10 @@ export function Pagination({ currentPage, totalPages, onPageChange, onPageHover,
 
       {/* Current Page Button */}
       <span
-        className="px-2 rounded-lg inset-shadowBlue text-white"
+        className="rounded-lg cyberpunk-neon2-btn text-white"
+        style={{
+          padding: '1px 6px',
+        }}
       >
         {currentPage}
       </span>
@@ -94,6 +97,9 @@ export function Pagination({ currentPage, totalPages, onPageChange, onPageHover,
           onClick={handleGoToPage}
           disabled={!goToPage || isLoading}
           className="cyberpunk-neon2-btn"
+          style={{
+            padding: '2px 6px',
+          }}
         >
          <span className="text">Go</span> 
         </button>

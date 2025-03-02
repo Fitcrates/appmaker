@@ -144,7 +144,7 @@ export function Slideshow() {
           {currentAnime.genres.map((genre) => (
             <span
               key={genre.name}
-              className="px-3 py-1 bg-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] rounded-full text-black font-semibold"
+              className="px-3 py-1 bg-[#3af5fc] drop-shadow-[0_0_8px_#3af5fc] rounded-full text-black font-semibold"
             >
               {genre.name}
             </span>

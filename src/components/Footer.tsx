@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Home, Telescope, Calendar, Handshake, Star, Languages, Contact } from 'lucide-react';
+import { HashLink } from 'react-router-hash-link';
+import { Search, Home, Telescope, Calendar, Handshake, Star, Languages, Contact, MessageSquare } from 'lucide-react';
 import '../index.css';
 import { LanguageSelector } from './LanguageSelector';
 
@@ -107,16 +108,22 @@ export function Footer() {
             <h3 className="text-lg font-semibold mb-4 text-white">Quick Links</h3>
             <ul className="space-y-2">
               <li>
-                <Link to="/" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
-                  <Star size={16} />
-                  Top Anime
-                </Link>
+              <HashLink to="/#topAnime" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
+  <Star size={16} />
+  Top Anime
+</HashLink>
               </li>
               <li>
-                <Link to="/" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
+                <HashLink to="/#schedule" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
                   <Calendar size={16} />
                   Schedule
-                </Link>
+                </HashLink>
+                </li>
+                <li>
+                <HashLink to="/#forum" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
+                  <MessageSquare size={16} />
+                  Forum
+                </HashLink>
               </li>
             </ul>
           </div>

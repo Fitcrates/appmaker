@@ -55,7 +55,7 @@ export const AnimeRecommendations: React.FC<AnimeRecommendationsProps> = ({
 
   return (
     <div className="mt-8">
-      <h2 className="bg-clip-text text-[#EC4899] drop-shadow-[0_0_8px_#fa448c] tilt-neon mb-4">Recommendations</h2>
+      <h2 className="bg-clip-text text-[#EC4899] drop-shadow-[0_0_8px_#fa448c] tilt-neon mb-4">Recommended</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {recommendations.slice(0, 12).map((rec) => (
           <Link
@@ -63,11 +63,11 @@ export const AnimeRecommendations: React.FC<AnimeRecommendationsProps> = ({
             to={`/anime/${rec.entry.mal_id}`}
             className="block group"
           >
-            <div className="bg-black/20 rounded-lg shadow-sm overflow-hidden  group-hover:scale-105 duration-200 ring-1 ring-white/20">
+            <div className="bg-black/20 rounded-lg shadow-sm overflow-hidden  group-hover:scale-105 duration-200 ring-1 ring-white/20 h-[15rem] md:h-[18rem]">
               <img
                 src={rec.entry.images.jpg.image_url || '/placeholder-anime.png'}
                 alt={rec.entry.title}
-                className="w-full h-48 object-cover"
+                className="w-full h-[70%] md:h-[80%] object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = '/placeholder-anime.png';

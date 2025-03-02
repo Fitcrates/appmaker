@@ -183,7 +183,7 @@ const UserAccountSettings = () => {
   return (
     <div className="container mx-auto px-4 py-8 backgroundMain">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-white mt-12">Account Settings</h1>
+        <h1 className="text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] mt-24  mb-4  tilt-neon">Account Settings</h1>
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -219,11 +219,12 @@ const UserAccountSettings = () => {
                 disabled={isLoading}
               />
             </div>
+            <div className="flex justify-center">
             <button
               type="submit"
               disabled={isLoading}
-              className="mx-auto w-[14rem] flex flex-row rounded-lg items-center justify-center py-2
-               ring-2 ring-[#fa448c] shadow-lg shadow-[#fa448c]/50 inset-shadow text-white"
+              className="mx-auto  flex flex-row rounded-lg items-center justify-center
+               cyberpunk-neon-btn text-white"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center">
@@ -234,6 +235,7 @@ const UserAccountSettings = () => {
                 'Update Display Name'
               )}
             </button>
+            </div>
           </form>
         </div>
 
@@ -270,11 +272,11 @@ const UserAccountSettings = () => {
                 minLength={6}
               />
             </div>
+            <div className="flex justify-center">
             <button
               type="submit"
               disabled={isLoading}
-              className="mx-auto w-[14rem] flex flex-row rounded-lg items-center justify-center py-2
-               ring-2 ring-[#fa448c] shadow-lg shadow-[#fa448c]/50 inset-shadow text-white"
+              className="flex flex-row  mx-auto cyberpunk-neon-btn items-center justify-center text-white"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center">
@@ -285,17 +287,19 @@ const UserAccountSettings = () => {
                 'Update Password'
               )}
             </button>
+            </div>
           </form>
         </div>
 
         <div className="bg-white/10 backdrop-blur-sm shadow rounded-lg p-6 mb-6 ring-1 ring-white/30">
           <h2 className="text-xl font-semibold mb-4 text-white">Account Actions</h2>
           <div className="space-y-4">
+            <div className="flex items-center">
             <button
               onClick={handleSignOut}
               disabled={isLoading}
               className="mx-auto w-[14rem] flex flex-row rounded-lg items-center justify-center py-2
-               ring-2 ring-[#3952dd] shadow-lg shadow-[#3952dd]/50 inset-shadowBlue text-white"
+               cyberpunk-neon-btn pink text-white"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center">
@@ -306,12 +310,13 @@ const UserAccountSettings = () => {
                 'Sign Out'
               )}
             </button>
-
+            </div>
+<div className="flex justify-center">
             <button
               onClick={handleDeleteAccount}
               disabled={isLoading}
               className="mx-auto  w-[14rem] flex flex-row rounded-lg items-center justify-center py-2
-               ring-2 ring-[#0dddaac4] shadow-lg shadow-[#0dddaac4]/50 inset-shadowRed text-white"
+               cyberpunk-neon-btn red text-white"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center">
@@ -322,6 +327,7 @@ const UserAccountSettings = () => {
                 'Delete Account'
               )}
             </button>
+            </div>
           </div>
         </div>
       </div>

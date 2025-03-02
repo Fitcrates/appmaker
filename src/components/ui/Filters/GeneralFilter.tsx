@@ -93,7 +93,7 @@ export function GeneralFilter({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 z-50 p-4 mt-2 backgroundMain border border-white/40 rounded-lg shadow-lg w-[300px]">
+        <div className="absolute left-0 z-50 p-4 mt-2 backgroundMain border border-white/40 rounded-lg shadow-lg w-[300px]">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-white">Filters</h3>
             

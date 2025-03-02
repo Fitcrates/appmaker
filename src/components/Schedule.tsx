@@ -152,7 +152,7 @@ export function Schedule() {
   };
 
   return (
-    <div className="max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8">
+    <div id="schedule" className="max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8">
     <div className="flex justify-between items-center flex-wrap">
       <h2 className="font-bold text-[#F2F5F7] tracking-tight mt-12 w-auto sm:w-auto">
         <span className="bg-clip-text text-[#EC4899] drop-shadow-[0_0_8px_#fa448c] tilt-neon flex flex-wrap">

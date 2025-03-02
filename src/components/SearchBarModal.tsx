@@ -43,7 +43,10 @@ const AnimeCard = memo(({
 
   return (
     <LazyLoad>
-      <div className="relative bg-black/20 shadow-md rounded-lg overflow-hidden text-white ring-1 ring-white/40">
+      <div 
+        className="relative bg-black/20 shadow-md rounded-lg overflow-hidden text-white ring-1 ring-white/40 cursor-pointer transition-transform hover:scale-[1.02]"
+        onClick={() => onNavigate(anime.mal_id)}
+      >
         <div className="relative group">
           <div className={`w-full h-[220px] ${!imageLoaded ? 'bg-gray-700 animate-pulse' : ''}`}>
             <img

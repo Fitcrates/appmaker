@@ -278,87 +278,91 @@ export function AnimeToWatch() {
   }
 
   return (
-    <div className="container  py-12 max-w-[100rem]  backgroundMain">
-  {/* Header section */}
-  <div className="flex flex-wrap md:flex-row md:justify-between items-center max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8 mb-6">
-    <h2 className="text-3xl text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] mt-10 md:mt-24 mb-4 md:mb-0 tilt-neon">
-      <span className="bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6]">
-        My Watchlist
-      </span>
-    </h2>
-    
-    <div className="relative flex items-center mb-4 md:mb-0  mt-10 md:mt-24">
-      <span className="bg-clip-text text-[#fd5454] drop-shadow-[0_2px_12px_#fd5454] tilt-neon2 px-4 py-2 ">
-        Total in Watchlist: {totalItems}
-      </span>
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        xmlnsXlink="http://www.w3.org/1999/xlink" 
-        viewBox="0 0 80 80"
-        className="absolute -right-2 w-12 h-12 md:w-14 md:h-14 stroke-[#fd5454] drop-shadow-[0_0_8px_#fd5454] stroke-2 fill-none"
-      >
-        <defs>
-          <path id="cLinkPath" d="M-1-1v21.3h10.1v39.4h-10.1v21.3h82v-82z"></path>
-        </defs>
-        <clipPath id="cLinkMask">
-          <use xlinkHref="#cLinkPath" overflow="visible"></use>
-        </clipPath>
-        <path 
-          className="drop-shadow-[0_0_8px_#fd5454]" 
-          d="M5 24c6.1-13.3 19.5-22.5 35-22.5 21.3 0 38.5 17.2 38.5 38.5s-17.2 38.5-38.5 38.5c-15.5 0-28.9-9.2-35-22.5"
-        />
-      </svg>
+    <div className="container py-12 max-w-[100rem] backgroundMain">
+    {/* Header section */}
+    <div className="flex flex-col md:flex-row md:justify-between items-center max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+      <h2 className="text-3xl text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] mt-24 md:mt-24 mb-4 md:mb-0 tilt-neon">
+        <span className="bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6]">
+          My Watchlist
+        </span>
+      </h2>
     </div>
-  </div>
-
-      <div className="flex flex-col sm:flex-row flex-wrap gap-4 max-w-[100rem] px-4 sm:px-6 lg:px-8 justify-center md:justify-start items-center mx-auto">
+  
+    {/* Filters and Counter Row */}
+    <div className="max-w-[100rem] px-4 sm:px-6 lg:px-8 mx-auto mb-6 mt-12">
+      {/* Search Input - Full Width */}
+      <div className="mb-4 w-full">
         <SearchBar
           searchQuery={searchTerm}
           setSearchQuery={setSearchTerm}
           handleSearch={handleSearch}
           isSearching={isLoading}
         />
+      </div>
+  
+      {/* Status Filter and Total Counter in one row */}
+      <div className="flex flex-row justify-between items-center w-full">
         <StatusFilter
           selectedStatuses={selectedStatuses}
           onStatusChange={setSelectedStatuses}
         />
-        <GenreFilter
-          selectedGenres={selectedGenres}
-          onGenreChange={setSelectedGenres}
+        
+        <div className="relative flex items-center sm:mt-0">
+          <span className="bg-clip-text text-[#fd5454] drop-shadow-[0_2px_12px_#fd5454] tilt-neon2 px-4 py-2">
+            Total in Watchlist: {totalItems}
+          </span>
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            xmlnsXlink="http://www.w3.org/1999/xlink" 
+            viewBox="0 0 80 80"
+            className="absolute -right-2 w-12 h-12 md:w-14 md:h-14 stroke-[#fd5454] drop-shadow-[0_0_8px_#fd5454] stroke-2 fill-none"
+          >
+            <defs>
+              <path id="cLinkPath" d="M-1-1v21.3h10.1v39.4h-10.1v21.3h82v-82z"></path>
+            </defs>
+            <clipPath id="cLinkMask">
+              <use xlinkHref="#cLinkPath" overflow="visible"></use>
+            </clipPath>
+            <path 
+              className="drop-shadow-[0_0_8px_#fd5454]" 
+              d="M5 24c6.1-13.3 19.5-22.5 35-22.5 21.3 0 38.5 17.2 38.5 38.5s-17.2 38.5-38.5 38.5c-15.5 0-28.9-9.2-35-22.5"
+            />
+          </svg>
+        </div>
+      </div>
+    </div>
+  
+    {error && (
+      <div className="text-red-500 px-4 sm:px-6 lg:px-8 mx-auto max-w-[100rem] mb-4">{error}</div>
+    )}
+  
+    <div className="max-w-[100rem] px-4 sm:px-6 lg:px-8 mx-auto pt-6">
+      <AnimeGrid>
+        {memoizedWatchlist.map((anime) => (
+          <div key={anime.id} className="w-full">
+            <LazyLoad>
+              <AnimeCard
+                anime={anime}
+                onStatusChange={handleStatusChange}
+                onDelete={handleDelete}
+                imageLoadError={imageLoadError}
+                handleImageError={handleImageError}
+              />
+            </LazyLoad>
+          </div>
+        ))}
+      </AnimeGrid>
+    </div>
+  
+    {totalItems > ITEMS_PER_PAGE && (
+      <div className="mt-8 px-4 sm:px-6 lg:px-8 mx-auto max-w-[100rem] flex justify-center">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(totalItems / ITEMS_PER_PAGE)}
+          onPageChange={handlePageChange}
         />
       </div>
-
-      {error && (
-        <div className="text-red-500 mb-4">{error}</div>
-      )}
-
-      <div className="flex space-y-6 max-w-[100rem]  px-0 sm:px-6 lg:px-8 justify-between items-center mx-auto pt-12">
-        <AnimeGrid>
-          {memoizedWatchlist.map((anime) => (
-            <div key={anime.id} className="w-full">
-              <LazyLoad>
-                <AnimeCard
-                  anime={anime}
-                  onStatusChange={handleStatusChange}
-                  onDelete={handleDelete}
-                  imageLoadError={imageLoadError}
-                  handleImageError={handleImageError}
-                />
-              </LazyLoad>
-            </div>
-          ))}
-        </AnimeGrid>
-      </div>
-
-      {totalItems > ITEMS_PER_PAGE && (
-        <div className="mt-8">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={Math.ceil(totalItems / ITEMS_PER_PAGE)}
-            onPageChange={handlePageChange}
-          />
-        </div>
-      )}
-    </div>
+    )}
+  </div>
   );
 }

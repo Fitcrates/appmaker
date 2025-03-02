@@ -211,67 +211,70 @@ export function UserRating() {
   }, [handleAnimeDetails]);
 
   return (
-    <div className="container min-h-screen mx-auto py-2 md:py-12 max-w-[100rem] backgroundMain ">
-      <div className="flex flex-col md:flex-row  md:justify-between gap-4  max-w-[100rem]  px-4 sm:px-6 lg:px-8 justify-start items-center mx-auto mb-12">
-        <h1 className="text-3xl text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon mt-24 mb-12 ">My Ratings</h1>
+    <div className="container py-12 max-w-[100rem] backgroundMain">
+  {/* Header section */}
+  <div className="flex flex-col md:flex-row md:justify-between items-center max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+    <h1 className="text-3xl text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] mt-24 md:mt-24 mb-4 md:mb-0 tilt-neon">
+      My Ratings
+    </h1>
+  </div>
 
-        <div className="relative mt-6 mb-12 md:mt-24 md:mb-12 flex items-center">
-          <span className="bg-clip-text text-[#fd5454] drop-shadow-[0_2px_12px_#fd5454] tilt-neon2 px-4 py-2">
-            Total Rated: {totalItems}
-          </span>
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            xmlnsXlink="http://www.w3.org/1999/xlink" 
-            viewBox="0 0 80 80"
-            className="absolute -right-2 w-14 h-14 stroke-[#fd5454] drop-shadow-[0_0_8px_#fd5454] stroke-2 fill-none"
-          >
-            <defs>
-              <path id="cLinkPath" d="M-1-1v21.3h10.1v39.4h-10.1v21.3h82v-82z"></path>
-            </defs>
-            <clipPath id="cLinkMask">
-              <use xlinkHref="#cLinkPath" overflow="visible"></use>
-            </clipPath>
-            <path 
-              className="drop-shadow-[0_0_8px_#fd5454]" 
-              d="M5 24c6.1-13.3 19.5-22.5 35-22.5 21.3 0 38.5 17.2 38.5 38.5s-17.2 38.5-38.5 38.5c-15.5 0-28.9-9.2-35-22.5"
+  {/* Filters and Counter Row */}
+  <div className="max-w-[100rem] px-4 sm:px-6 lg:px-8 mx-auto mb-6 mt-12">
+    {/* Rating Range and Total Counter in one row */}
+    <div className="flex flex-col sm:flex-row justify-center sm:justify-between items-center w-full gap-8">
+      {/* Rating Range Slider */}
+      <div className="w-[300px]">
+        <div className="ring-1 ring-white/40 rounded-lg shadow-sm">
+          <div className="text-xs pt-1 font-medium text-center text-white">
+            Rating Range: {ratingRange[0]} - {ratingRange[1]}
+          </div>
+          <div className="px-4 py-2">
+            <RangeSlider
+              min={0}
+              max={10}
+              id="range-slider-gradient"
+              className="margin-lg"
+              step={"1"}
+              value={ratingRange}
+              onInput={setRatingRange}
             />
-          </svg>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row justify-between md:justify-start gap-4  max-w-[100rem]  px-4 sm:px-6 lg:px-8 justify-left items-center mx-auto mb-12">
-        {/* Rating Range Slider */}
-        <div className="w-full md:w-[300px]">
-          <div className=" ring-1 ring-white/40 rounded-lg shadow-sm">
-            <div className="text-xs  pt-1 font-medium text-center text-white">
-              Rating Range: {ratingRange[0]} - {ratingRange[1]}
-            </div>
-            <div className="px-4 py-2">
-              <RangeSlider
-                min={0}
-                max={10}
-                id="range-slider-gradient"
-                className="margin-lg"
-                step={"1"}
-                value={ratingRange}
-                onInput={setRatingRange}
-              />
-            </div>
           </div>
         </div>
-        <GenreFilter
-          selectedGenres={selectedGenres}
-          onGenreChange={setSelectedGenres}
-        />
       </div>
+      
+      <div className="relative flex items-center ">
+        <span className="bg-clip-text text-[#fd5454] drop-shadow-[0_0_8px_#fd5454] tilt-neon2 px-4 py-2">
+          Total Rated: {totalItems}
+        </span>
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          xmlnsXlink="http://www.w3.org/1999/xlink" 
+          viewBox="0 0 80 80"
+          className="absolute -right-2 w-12 h-12 md:w-14 md:h-14 stroke-[#fd5454] drop-shadow-[4_0_8px_#fd5454] stroke-2 fill-none"
+        >
+          <defs>
+            <path id="cLinkPath" d="M-1-1v21.3h10.1v39.4h-10.1v21.3h82v-82z"></path>
+          </defs>
+          <clipPath id="cLinkMask">
+            <use xlinkHref="#cLinkPath" overflow="visible"></use>
+          </clipPath>
+          <path 
+            className="drop-shadow-[0_0_8px_#fd5454]" 
+            d="M5 24c6.1-13.3 19.5-22.5 35-22.5 21.3 0 38.5 17.2 38.5 38.5s-17.2 38.5-38.5 38.5c-15.5 0-28.9-9.2-35-22.5"
+          />
+        </svg>
+      </div>
+    </div>
+  </div>
+ 
 
       {error && (
         <div className="text-red-500 mb-4 px-4 md:px-12 lg:px-24 xl:px-48">{error}</div>
       )}
 
       {/* Ratings Grid */}
-      <div className="space-y-6 px-0 max-w-[100rem]  sm:px-6 lg:px-8 justify-left items-center mx-auto">
+      <div className="space-y-6 px-0 max-w-[100rem] mt-12  sm:px-6 lg:px-8 justify-left items-center mx-auto">
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (

@@ -127,11 +127,11 @@ export const AnimeCharacters: React.FC<AnimeCharactersProps> = ({ animeId }) => 
                 state={{ fromAnimeId: animeId }}
                 className="block group"
               >
-                <div className="bg-black/20 rounded-lg shadow-sm overflow-hidden transition-all duration-300 group-hover:shadow-md group-hover:scale-105 ring-1 ring-white/20">
+                <div className="bg-black/20 rounded-lg shadow-sm overflow-hidden transition-all duration-300 group-hover:shadow-md group-hover:scale-105 ring-1 ring-white/20 h-[15rem] md:h-[18rem]">
                 <img
                     src={char.character.images.jpg.image_url || '/placeholder-avatar.png'}
                     alt={char.character.name}
-                    className="w-full h-40 object-cover"
+                    className="w-full h-2/3 object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = '/placeholder-avatar.png';
