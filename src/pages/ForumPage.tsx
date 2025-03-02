@@ -264,13 +264,13 @@ export default function ForumPage() {
   }, [selectedLetter, hasMore, isLetterLoading, page]);
 
   return (
-    <div className="min-h-screen mx-auto py-12 max-w-[100rem] space-y-6 px-4 sm:px-6 lg:px-8 mt-24">
+    <div id="forum" className="min-h-screen mx-auto py-12 max-w-[100rem] space-y-6 px-4 sm:px-6 lg:px-8 mt-24">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-center mb-6 bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon">
           Anime Forum Discussions
         </h1>
 
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-wrap md:flex-row gap-4 mb-4">
           <QuickAccessDropdown
             topAnime={topAnime}
             setSelectedAnime={setSelectedAnime}
@@ -286,7 +286,7 @@ export default function ForumPage() {
 
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
         {/* Anime Search */}
-        <div className="relative flex-1">
+        <div className="relative justify-center items-center flex-1">
           <input
             type="text"
             placeholder="Search for anime by title..."

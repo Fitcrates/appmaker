@@ -166,12 +166,30 @@ export function AnimePage() {
 
   const isElementInViewport = useCallback((el: HTMLElement) => {
     const rect = el.getBoundingClientRect();
-    return (
-      rect.top >= 0 &&
-      rect.left >= 0 &&
-      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-    );
+    const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+    const windowWidth = window.innerWidth || document.documentElement.clientWidth;
+    
+    // For mobile devices, use a more lenient check with additional margin
+    const isMobile = window.innerWidth <= 768;
+    const mobileMargin = 400; // pixels
+    
+    if (isMobile) {
+      // On mobile, consider element visible if it's within the viewport plus margin
+      return (
+        rect.bottom >= -mobileMargin &&
+        rect.right >= 0 &&
+        rect.top <= windowHeight + mobileMargin &&
+        rect.left <= windowWidth
+      );
+    } else {
+      // On desktop, use the standard viewport check
+      return (
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= windowHeight &&
+        rect.right <= windowWidth
+      );
+    }
   }, []);
 
   const [isReviewsVisible, setIsReviewsVisible] = useState(false);
@@ -190,11 +208,7 @@ export function AnimePage() {
       setIsRecommendationsVisible(recommendationsVisible);
       setIsEpisodesVisible(episodesVisible);
 
-      console.log('Visibility states:', {
-        reviews: reviewsVisible,
-        recommendations: recommendationsVisible,
-        episodes: episodesVisible
-      });
+      
     };
 
     // Initial check
@@ -409,12 +423,14 @@ export function AnimePage() {
     setSelectedReview(review);
   };
 
+ 
+
   return (
     <ErrorBoundary>
-      <div className="mx-auto min-h-screen max-w-[100rem] space-y-6 px-4 sm:px-6 lg:px-8 mt-12">
+      <div className="mx-auto min-h-screen max-w-[100rem] space-y-6 px-2 sm:px-6 lg:px-8 mt-12">
         {anime ? (
           <div>
-            <div className="container mx-auto px-4 py-8 mt-12 ">
+            <div className="container mx-auto px-2 py-8 mt-12 ">
               {/* Main Content */}
               <div className="flex flex-col gap-8 ">
                 {/* Header Section */}
@@ -427,7 +443,7 @@ export function AnimePage() {
                     Back
                   </button>
                 </div>
-                
+               
                 <div className="flex flex-col md:flex-row gap-8 ">
                   <div className="w-3/4 md:w-1/3 lg:w-1/4 shrink-0 justify-center items-center ">
                     <img
@@ -498,13 +514,13 @@ export function AnimePage() {
                       </div>
                       </div>
                     )}
-                    
+                   
                   </div>
-                
+               
                   <div className="md:w-2/3 lg:w-3/4 flex-grow">
                   <h1 className="text-3xl font-bold text-white">{anime.title}</h1>
                     <h2 className="text-xl text-white mb-4">{anime.title_japanese}</h2>
-                    
+                   
                     {anime.genres && (
                       <div className="mb-4 text-white">
                         <h3 className="font-medium mb-2 text-white">Genres</h3>
@@ -513,6 +529,7 @@ export function AnimePage() {
                     )}
                    
                     <p className="text-white mb-4">{anime.synopsis}</p>
+
 
                     {anime.trailer?.youtube_id && (
                       <div className="mb-6">
@@ -524,8 +541,9 @@ export function AnimePage() {
                       </div>
                     )}
 
-                    <div className="flex w-full gap-8 justify-between mt-12 ">
-                      <div className="w-1/2">
+
+                    <div className="flex md:flex-row flex-col w-full gap-8 justify-between mt-12 ">
+                      <div className="w-1/1 md:w-1/2">
                         <h3 className="bg-clip-text text-[#EC4899] drop-shadow-[0_0_8px_#fa448c] tilt-neon4 mb-4">Information</h3>
                         <dl className="space-y-2 justify-between w-full ">
                           <div className="flex justify-between border-t ">
@@ -545,6 +563,10 @@ export function AnimePage() {
                             <dd className="text-white">{anime.duration}</dd>
                           </div>
                           <div className="flex justify-between border-t">
+                            <dt className="text-white">Rating</dt>
+                            <dd className="text-white">{anime.rating}</dd>
+                          </div>
+                          <div className="flex justify-between border-t">
                             <dt className="text-white">Aired</dt>
                             <dd className="text-white">
                               {anime.aired
@@ -554,7 +576,7 @@ export function AnimePage() {
                           </div>
                         </dl>
                       </div>
-                      <div className="w-1/2">
+                      <div className="w-1/1 md:w-1/2">
                         <h3 className="bg-clip-text text-[#56d8ff] drop-shadow-[0_0_8px_#56d8ff] tilt-neon4 mb-4">Statistics</h3>
                         <dl className="space-y-2 justify-between w-full">
                           {anime.members && (
@@ -581,6 +603,12 @@ export function AnimePage() {
                               <dd className="text-white">#{anime.popularity.toLocaleString()}</dd>
                             </div>
                           )}
+                          {anime.score && (
+                            <div className="flex justify-between border-t">
+                              <dt className="text-white">Score</dt>
+                              <dd className="text-white">#{anime.score.toLocaleString()}</dd>
+                            </div>
+                          )}
                           {anime.scored_by && (
                             <div className="flex justify-between border-t">
                               <dt className="text-white">Scored By</dt>
@@ -597,6 +625,7 @@ export function AnimePage() {
                   <AnimeCharacters animeId={Number(id)} />
                 </div>
 
+
                 {/* Reviews Section */}
                 <div className="relative mt-8" ref={reviewsRef}>
                   <AnimeReviews
@@ -611,6 +640,7 @@ export function AnimePage() {
                   />
                 </div>
 
+
                 {/* Episodes Section */}
                 <div className="mt-8" ref={episodesRef}>
                   {episodes.length > 0 ? (
@@ -622,6 +652,7 @@ export function AnimePage() {
                     <div className="animate-pulse">Loading episodes...</div>
                   ) : null}
                 </div>
+
 
                 {/* Recommendations Section */}
                 <div className="mt-4" ref={recommendationsRef}>
@@ -636,9 +667,10 @@ export function AnimePage() {
           </div>
         ) : null}
 
+
         {/* Review Modal */}
         {selectedReview && (
-          <Modal 
+          <Modal
             isOpen={!!selectedReview}
             onClose={() => setSelectedReview(null)}
             title={`Review by ${selectedReview.user.username}`}
@@ -659,6 +691,7 @@ export function AnimePage() {
             </div>
           </Modal>
         )}
+
 
         {/* Trailer Modal */}
         {showTrailer && anime?.trailer?.youtube_id && (

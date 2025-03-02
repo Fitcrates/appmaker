@@ -146,9 +146,14 @@ const GenrePage: React.FC = () => {
         page: page || currentPage,
         limit: 25,
         order_by: 'score',
-        sort: scoredBySort || 'desc',
-        timestamp: Date.now() // Add timestamp to force fresh fetch
+        sort: scoredBySort || 'desc'
       };
+
+      // Only add timestamp for requests that should bypass cache
+      if (currentSearchQuery || selectedGenres.length > 0 || selectedStudios.length > 0 || 
+          (showTvSeries && !showMovies) || (!showTvSeries && showMovies)) {
+        params.timestamp = Date.now(); // Add timestamp to force fresh fetch
+      }
 
       if (currentSearchQuery) {
         params.q = currentSearchQuery;
@@ -289,88 +294,97 @@ const GenrePage: React.FC = () => {
               Search and filter through thousands of anime titles
             </p>
           </div>
+{/* Filters Section  */}
+<div className="my-8">
+  <div className="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8">
+    {/* Search Input - Full Width */}
+    <div className="mb-4 w-full">
+      <SearchBar 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        handleSearch={handleSearch}
+        isSearching={isSearching}
+      />
+    </div>
+
+    {/* Filters and Results Row - Always in one row */}
+    <div className="flex justify-between items-center w-full">
+      {/* General Filter */}
+      <div>
+        <GeneralFilter
+          selectedGenres={selectedGenres}
+          setSelectedGenres={(genres) => {
+            setSelectedGenres(genres);
+            setCurrentPage(1);
+            setShouldSearch(true);
+          }}
+          selectedCreators={selectedCreators}
+          setSelectedCreators={(creators) => {
+            setSelectedCreators(creators);
+            setCurrentPage(1);
+            setShouldSearch(true);
+          }}
+          selectedStudios={selectedStudios}
+          setSelectedStudios={(studios) => {
+            setSelectedStudios(studios);
+            setCurrentPage(1);
+            setShouldSearch(true);
+          }}
+          scoredBySort={scoredBySort}
+          setScoredBySort={(sort) => {
+            setScoredBySort(sort);
+            setCurrentPage(1);
+            setShouldSearch(true);
+          }}
+          showTvSeries={showTvSeries}
+          setShowTvSeries={(show) => {
+            setShowTvSeries(show);
+            setCurrentPage(1);
+            setShouldSearch(true);
+          }}
+          showMovies={showMovies}
+          setShowMovies={(show) => {
+            setShowMovies(show);
+            setCurrentPage(1);
+            setShouldSearch(true);
+          }}
+          hideHentai={hideHentai}
+          setHideHentai={(hide) => {
+            setHideHentai(hide);
+            setCurrentPage(1);
+            setShouldSearch(true);
+          }}
+        />
+      </div>
+      
+      {/* Results Counter */}
+      <div className="relative flex items-center">
+        <span className="bg-clip-text text-[#fd5454] drop-shadow-[0_2px_12px_#fd5454] tilt-neon2 px-4 py-2">
+          Results: {totalItems || 0}
+        </span>
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          xmlnsXlink="http://www.w3.org/1999/xlink" 
+          viewBox="0 0 80 80"
+          className="absolute -right-2 w-14 h-14 stroke-[#fd5454] drop-shadow-[0_0_8px_#fd5454] stroke-2 fill-none"
+        >
+          <defs>
+            <path id="cLinkPath" d="M-1-1v21.3h10.1v39.4h-10.1v21.3h82v-82z"></path>
+          </defs>
+          <clipPath id="cLinkMask">
+            <use xlinkHref="#cLinkPath" overflow="visible"></use>
+          </clipPath>
+          <path 
+            className="drop-shadow-[0_0_8px_#fd5454]" 
+            d="M5 24c6.1-13.3 19.5-22.5 35-22.5 21.3 0 38.5 17.2 38.5 38.5s-17.2 38.5-38.5 38.5c-15.5 0-28.9-9.2-35-22.5"
+          />
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
   
-          {/* Filters Section  */}
-          <div className="mb-12 mt-24">
-            <div className="max-w-[100rem] flex flex-col md:flex-row justify-center sm:justify-between items-center mx-auto space-y-8 sm:space-y-6 md:space-x-0 px-4 sm:px-6 lg:px-8 mt-24">
-              <div className="flex flex-col md:flex-row justify-between gap-4 items-center mb-12">
-                <SearchBar 
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
-                  handleSearch={handleSearch}
-                  isSearching={isSearching}
-                />
-                <GeneralFilter
-                  selectedGenres={selectedGenres}
-                  setSelectedGenres={(genres) => {
-                    setSelectedGenres(genres);
-                    setCurrentPage(1);
-                    setShouldSearch(true);
-                  }}
-                  selectedCreators={selectedCreators}
-                  setSelectedCreators={(creators) => {
-                    setSelectedCreators(creators);
-                    setCurrentPage(1);
-                    setShouldSearch(true);
-                  }}
-                  selectedStudios={selectedStudios}
-                  setSelectedStudios={(studios) => {
-                    setSelectedStudios(studios);
-                    setCurrentPage(1);
-                    setShouldSearch(true);
-                  }}
-                  scoredBySort={scoredBySort}
-                  setScoredBySort={(sort) => {
-                    setScoredBySort(sort);
-                    setCurrentPage(1);
-                    setShouldSearch(true);
-                  }}
-                  showTvSeries={showTvSeries}
-                  setShowTvSeries={(show) => {
-                    setShowTvSeries(show);
-                    setCurrentPage(1);
-                    setShouldSearch(true);
-                  }}
-                  showMovies={showMovies}
-                  setShowMovies={(show) => {
-                    setShowMovies(show);
-                    setCurrentPage(1);
-                    setShouldSearch(true);
-                  }}
-                  hideHentai={hideHentai}
-                  setHideHentai={(hide) => {
-                    setHideHentai(hide);
-                    setCurrentPage(1);
-                    setShouldSearch(true);
-                  }}
-                />
-              </div>
-              <div className="relative mb-12  flex items-center">
-                <span className="bg-clip-text text-[#fd5454] drop-shadow-[0_2px_12px_#fd5454] tilt-neon2 px-4 py-2">
-                  Results: {totalItems || 0}
-                </span>
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  xmlnsXlink="http://www.w3.org/1999/xlink" 
-                  viewBox="0 0 80 80"
-                  className="absolute -right-2 w-14 h-14 stroke-[#fd5454] drop-shadow-[0_0_8px_#fd5454] stroke-2 fill-none"
-                >
-                  <defs>
-                    <path id="cLinkPath" d="M-1-1v21.3h10.1v39.4h-10.1v21.3h82v-82z"></path>
-                  </defs>
-                  <clipPath id="cLinkMask">
-                    <use xlinkHref="#cLinkPath" overflow="visible"></use>
-                  </clipPath>
-                  <path 
-                    className="drop-shadow-[0_0_8px_#fd5454]" 
-                    d="M5 24c6.1-13.3 19.5-22.5 35-22.5 21.3 0 38.5 17.2 38.5 38.5s-17.2 38.5-38.5 38.5c-15.5 0-28.9-9.2-35-22.5"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-  
-          {/* Updated Results Section with new card styling */}
+          {/* Results Section with card styling */}
           <div className="max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8 mt-12">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {animeList.map((anime, index) => (
@@ -378,19 +392,19 @@ const GenrePage: React.FC = () => {
                   <div
                     className="relative rounded-xl shadow-lg overflow-hidden 
                     transition-all duration-300 hover:scale-105 hover:shadow-xl 
-                    border border-white/20 cursor-pointer flex flex-col"
+                    border border-white/20 cursor-pointer flex flex-col  h-[20rem] sm:h-[22rem] md:h-[25rem] lg:h-[29rem] xl:h-[29rem] "
                     onClick={() => setSelectedAnime(anime)} // Open preview modal on card click
                   >
                     {/* Image Container */}
-                    <div className="relative rounded-t-xl overflow-t-hidden aspect-[3/4] max-h-[20rem]">
+                    <div className="relative rounded-t-xl overflow-t-hidden aspect-[3/4] max-h-[13rem] sm:max-h-[15rem] md:max-h-[18rem] lg:max-h-[22rem] xl:max-h-[22rem]">
                       <img
                         src={anime.images.jpg.image_url}
                         alt={anime.title}
-                        className="w-full h-full rounded-t-xl overflow-hidden object-cover transition-transform duration-500 group-hover:scale-110"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         loading="lazy"
                       />
                       {anime.score > 0 && (
-                        <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5 flex items-center">
+                        <div className="absolute top-3 left-2 bg-black/70 backdrop-blur-sm rounded-full px-3 py-1.5 flex items-center">
                           <Star className="w-4 h-4 text-[#F59E0B]" />
                           <span className="ml-1.5 text-sm font-mono text-white">{anime.score.toFixed(1)}</span>
                         </div>
@@ -398,13 +412,13 @@ const GenrePage: React.FC = () => {
                     </div>
                     
                     {/* Title and Info area below the image */}
-                    <div className="pt-2 pl-2 bg-black/10  backdrop-blur-sm border-t border-[#43b5a0]/20 h-[6rem]">
+                    <div className="h-full  p-2 pt-2 pl-2 bg-black/20  backdrop-blur-sm border-t border-[#43b5a0]/20">
                       <h3 className="font-medium text-[#F2F5F7] line-clamp-2  text-lg group-hover:text-white 
                       transition-colors duration-200 w-full">
                         {anime.title}
                       </h3>
                       <div className="absolute flex items-center bottom-1 opacity-70 group-hover:opacity-100 transition-all duration-300">
-                        <span className="text-xs text-[#F2F5F7]/90">
+                        <span className="text-xs text-[#F2F5F7]/90 ">
                           {anime.year && <span>{anime.year}</span>}
                           {anime.genres && anime.genres.length > 0 && (
                             <span className="line-clamp-1">
@@ -416,7 +430,7 @@ const GenrePage: React.FC = () => {
                     </div>
                   </div>
   
-                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
                     <div className="flex gap-2">
                       <Tooltip content={isInWatchlist[anime.mal_id] ? "Remove from Watchlist" : "Add to Watchlist"}>
                         <button

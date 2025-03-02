@@ -123,6 +123,17 @@ class APICache {
     if (key.includes('/schedules')) return APICache.CACHE_DURATIONS.SCHEDULES;
     if (key.includes('/seasons')) return APICache.CACHE_DURATIONS.SEASONS;
     if (key.includes('/random')) return APICache.CACHE_DURATIONS.RANDOM;
+    
+    // Add caching for general anime list requests (used in GenrePage)
+    // But only if they don't have search parameters or specific filters
+    if (key.includes('/anime?page=') && 
+        !key.includes('q=') && 
+        !key.includes('genres=') && 
+        !key.includes('producers=') && 
+        !key.includes('type=')) {
+      return APICache.CACHE_DURATIONS.TOP_ANIME; // Cache for 12 hours like top anime
+    }
+    
     return APICache.CACHE_DURATIONS.DEFAULT;
   }
 
