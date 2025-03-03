@@ -71,7 +71,7 @@ export default function Navbar() {
           <div className="flex items-center">
             {/* Desktop navigation */}
             <div className="flex-shrink-0 flex items-center mr-4 ">
-              <Link to="/" className="bg-clip-text text-[#f4ff54] drop-shadow-[0_0_8px_#f4ff54] tilt-neon3  leading-tight">
+              <Link to="/" className="bg-clip-text text-[#f4ff54] drop-shadow-[0_0_8px_#f4ff54] tilt-neon3  leading-tight notranslate">
                 AnimeCrates
               </Link>
             </div>
@@ -127,7 +127,7 @@ export default function Navbar() {
               ) : user ? (
                 <div className="relative group z-50">
                   <button className="flex items-center text-white hover:text-[#fec859] pb-2">
-                    <span className="mr-1 min-w-[120px] text-right truncate">
+                    <span className="mr-1 min-w-[120px] text-right truncate notranslate">
                       {username}
                     </span>
                     <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
