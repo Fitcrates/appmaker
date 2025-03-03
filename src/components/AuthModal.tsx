@@ -156,13 +156,14 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       {/* Modal Content */}
       <div className="w-full max-w-md mx-auto relative z-[10000] p-4">
         <div className="backgroundMain rounded-lg p-8 w-full shadow-xl max-h-[90vh] overflow-y-auto ring-1 ring-white/20">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-white hover:text-gray-700"
-          >
-            <X size={24} />
-          </button>
-
+        <div className="flex justify-end">
+        <button
+              onClick={onClose}
+              className="relative  p-2 hover:bg-red-500  text-white hover:text-black rounded-full transition-colors flex-shrink-0 justify-end"
+            >
+              <X className="h-5 w-5" />
+            </button>
+</div>
           <h2 className="text-2xl font-bold text-white mb-6 text-center">
             {isLogin ? 'Log In' : 'Create Account'}
           </h2>
@@ -190,7 +191,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <div className="space-y-4">
             <button
               onClick={handleGoogleSignIn}
-              className="w-full flex items-center justify-center gap-2 text-white border border-gray-300 rounded-lg px-4 py-2 hover:text-black hover:bg-[#4ef1d6]"
+              className="w-full flex items-center justify-center gap-2 text-white cyberpunk-neon-btn"
               disabled={isLoading}
             >
               <img src="/google-icon.svg" alt="Google" className="w-5 h-5" />
@@ -222,7 +223,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="w-full px-4 py-2 bg-white/20 placeholder:text-white text-white border rounded-lg focus:ring-2 focus:ring-blue-500 pr-10"
                   placeholder="Your name"
                 />
               </div>
@@ -236,7 +237,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 py-2 block w-full rounded-md border-[#40a3ff] shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="w-full px-4 py-2 bg-white/20 placeholder:text-white text-white border rounded-lg focus:ring-2 focus:ring-blue-500 pr-10"
                 placeholder="you@example.com"
               />
             </div>
@@ -249,7 +250,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 py-2 block w-full rounded-md border-[#40a3ff] shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="w-full px-4 py-2 bg-white/20 placeholder:text-white text-white border rounded-lg focus:ring-2 focus:ring-blue-500 pr-10"
                 placeholder={isLogin ? "Your password" : "Create a password (min. 6 characters)"}
               />
             </div>
@@ -259,7 +260,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   type="button"
                   onClick={handleResetPassword}
                   disabled={isResetting}
-                  className="bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon2"
+                  className="bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] "
                 >
                   {isResetting ? 'Sending...' : 'Forgot your password?'}
                 </button>
@@ -268,7 +269,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center items-center py-2 px-4 ring-2 ring-[#40a3ff] shadow-lg shadow-[#40a3ff]/50 inset-shadowBlue text-white rounded-lg gap-2 hover:shadow-lg hover:shadow-[#40a3ff]/50"
+              className="w-full flex justify-center items-center py-2 px-4 cyberpunk-neon-btn text-white rounded-lg gap-2 hover:shadow-lg hover:shadow-[#40a3ff]/50"
             >
               {isLoading
                 ? 'Please wait...'
