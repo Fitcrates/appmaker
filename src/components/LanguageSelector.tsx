@@ -1,8 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDown, Check } from 'lucide-react';
 
 interface Language {
   code: string;
   name: string;
+}
+
+interface LanguageSelectorProps {
+  position?: 'navbar' | 'footer'; // Default will be 'navbar'
 }
 
 const languages: Language[] = [
@@ -20,7 +25,14 @@ const languages: Language[] = [
   { code: 'hi', name: 'हिन्दी' },
 ];
 
-export function LanguageSelector() {
+export function LanguageSelector({ position = 'navbar' }: LanguageSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState(languages[0]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Determine if dropdown should open upward (for footer)
+  const openUpward = position === 'footer';
+
   // Function to hide Google Translate banner without breaking functionality
   const hideGoogleTranslateBanner = () => {
     // Target all possible banner elements
@@ -66,11 +78,14 @@ export function LanguageSelector() {
     }
   };
 
-  const changeLanguage = (lang: string) => {
+  const changeLanguage = (lang: Language) => {
+    setSelectedLanguage(lang);
+    setIsOpen(false);
+    
     // Set Google Translate language
     const select = document.querySelector('.goog-te-combo') as HTMLSelectElement;
     if (select) {
-      select.value = lang;
+      select.value = lang.code;
       select.dispatchEvent(new Event('change'));
       
       // Hide banner immediately and then again after a delay
@@ -83,6 +98,20 @@ export function LanguageSelector() {
       setTimeout(hideGoogleTranslateBanner, 1000);
     }
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Initial setup to hide Google banner
   useEffect(() => {
@@ -118,16 +147,55 @@ export function LanguageSelector() {
   }, []);
 
   return (
-    <select
-      onChange={(e) => changeLanguage(e.target.value)}
-      className="block w-[40%] px-3 py-2 text-base text-black bg-white/30 backdrop-blur-sm border border-gray-300 rounded-md shadow-sm 
-      focus:outline-none focus:ring-blue-500 focus:border-blue-500 notranslate"
-    >
-      {languages.map((lang) => (
-        <option key={lang.code} value={lang.code}>
-          {lang.name}
-        </option>
-      ))}
-    </select>
+    <div className="relative w-[60%] notranslate" ref={dropdownRef}>
+      {/* Custom dropdown button */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between w-full px-3 py-2 text-white bg-white/10 backdrop-blur-sm border border-white/20 rounded-md shadow-sm transition-colors hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <span>{selectedLanguage.name}</span>
+        <ChevronDown 
+          size={16} 
+          className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
+        />
+      </button>
+      
+      {/* Dropdown menu with conditional positioning */}
+      {isOpen && (
+        <div 
+          className={`absolute z-50 w-full overflow-hidden backgroundMain border border-white/40 rounded-md shadow-lg
+            ${openUpward ? 'bottom-full mb-1' : 'top-full mt-1'}`}
+        >
+          <div className="max-h-full overflow-y-auto py-1">
+            {languages.map((language) => (
+              <button
+                key={language.code}
+                onClick={() => changeLanguage(language)}
+                className={`flex w-full items-center px-3 py-2 text-left text-sm transition-colors hover:bg-teal-600/20
+                  ${language.code === selectedLanguage.code ? 'bg-teal-600/30 text-white' : 'text-white/80'}`}
+              >
+                <span className="flex-grow">{language.name}</span>
+                {language.code === selectedLanguage.code && (
+                  <Check size={16} className="text-teal-300" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Hidden select element to work with Google Translate */}
+      <select 
+        className="hidden goog-te-combo" 
+        aria-hidden="true"
+      >
+        {languages.map((lang) => (
+          <option key={lang.code} value={lang.code}>
+            {lang.name}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
