@@ -72,12 +72,12 @@ export const CookieConsentManager: React.FC = () => {
   if (!showBanner) return null;
 
   return (
-    <div style={{ width: '100vw', height: '10vh' }} className="fixed bottom-0 left-0 bg-white/80 text-black p-3 shadow-lg z-50">
-      <div className="flex flex-col sm:flex-row items-center gap-2 justify-center">
-        <div className="items-center justify-center min-w-0">
-          <p className="text-xs text-black whitespace-normal">
+    <div style={{ width: '100vw', height: '12vh' }} className="fixed bottom-0 left-0 bg-gradient-to-t from-[#5003cc] to-[#6120a1] text-white p-3 shadow-lg z-50 ">
+      <div className="flex flex-col sm:flex-row items-center gap-2 justify-center mt-0 md:mt-6">
+        <div className="items-center justify-center min-w-0 ">
+          <p className="text-sm text-white whitespace-normal">
             We use cookies to enhance your experience. Essential cookies are required for basic functionality.
-            <a href="/privacy-policy" className="underline hover:text-black ml-1">
+            <a href="/privacy-policy" className="underline hover:text-teal-300 ml-1">
               Privacy Policy
             </a>
           </p>
@@ -97,7 +97,7 @@ export const CookieConsentManager: React.FC = () => {
           </button>
           <button
             onClick={handleAcceptAll}
-            className="px-2 py-1 bg-green-600 hover:bg-green-500  text-white rounded text-xs whitespace-nowrap transition-colors"
+            className="px-2 py-1 bg-green-700 hover:bg-green-600 text-white rounded text-xs whitespace-nowrap transition-colors"
           >
             Accept All
           </button>
