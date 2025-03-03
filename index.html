@@ -19,21 +19,92 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script type="text/javascript">
+      // Function to hide Google Translate banner
+      function hideGoogleTranslateBanner() {
+        // Target all possible banner elements
+        const selectors = [
+          '.goog-te-banner-frame',
+          'iframe.goog-te-banner-frame',
+          '.goog-te-banner-frame.skiptranslate',
+          '.VIpgJd-ZVi9od-ORHb-OEVmcd',
+          '.VIpgJd-ZVi9od-ORHb',
+          '.VIpgJd-ZVi9od-l4eHX-hSRGPd'
+        ];
+        
+        selectors.forEach(selector => {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(el => {
+            if (el instanceof HTMLElement || el instanceof HTMLIFrameElement) {
+              el.style.display = 'none';
+            }
+          });
+        });
+        
+        // Fix body position
+        document.body.style.top = '0px';
+      }
+
       function googleTranslateElementInit() {
         new google.translate.TranslateElement({
           pageLanguage: 'en',
           includedLanguages: 'ar,en,de,es,fr,hi,it,ja,ko,pl,pt,ru,zh-CN',
           layout: google.translate.TranslateElement.InlineLayout.HORIZONTAL,
-          autoDisplay: true,
-          multilanguagePage: true
+          autoDisplay: false,
+          gaTrack: false,
+          gaId: ''
         }, 'google_translate_element');
+        
+        // Hide banner immediately and then again after a delay
+        hideGoogleTranslateBanner();
+        
+        // Apply multiple times with different delays
+        setTimeout(hideGoogleTranslateBanner, 100);
+        setTimeout(hideGoogleTranslateBanner, 300);
+        setTimeout(hideGoogleTranslateBanner, 500);
+        setTimeout(hideGoogleTranslateBanner, 1000);
+        
+        // Set up interval to periodically check and hide
+        setInterval(hideGoogleTranslateBanner, 2000);
       }
+    
       window.addEventListener('load', function() {
+        // Add CSS to hide banner before script loads
+        const style = document.createElement('style');
+        style.textContent = `
+          .goog-te-banner-frame,
+          iframe.goog-te-banner-frame,
+          .goog-te-banner-frame.skiptranslate,
+          .VIpgJd-ZVi9od-ORHb-OEVmcd,
+          .VIpgJd-ZVi9od-ORHb,
+          .VIpgJd-ZVi9od-l4eHX-hSRGPd {
+            display: none !important;
+          }
+          body {
+            top: 0 !important;
+          }
+        `;
+        document.head.appendChild(style);
+        
+        // Load Google Translate script
         const script = document.createElement('script');
         script.type = 'text/javascript';
         script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
         document.body.appendChild(script);
+        
+        // Set up MutationObserver to detect DOM changes
+        const observer = new MutationObserver(function() {
+          hideGoogleTranslateBanner();
+        });
+        
+        // Start observing
+        observer.observe(document.body, { 
+          childList: true, 
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['style', 'class']
+        });
       });
     </script>
+    
   </body>
 </html>
