@@ -392,15 +392,15 @@ const GenrePage: React.FC = () => {
                   <div
                     className="relative rounded-xl shadow-lg overflow-hidden 
                     transition-all duration-300 hover:scale-105 hover:shadow-xl 
-                    border border-white/20 cursor-pointer flex flex-col  h-[20rem] sm:h-[22rem] md:h-[25rem] lg:h-[29rem] xl:h-[29rem] "
+                    border border-white/20 cursor-pointer flex flex-col  h-[22rem] sm:h-[22rem] md:h-[23rem] lg:h-[24rem] xl:h-[25rem] "
                     onClick={() => setSelectedAnime(anime)} // Open preview modal on card click
                   >
                     {/* Image Container */}
-                    <div className="relative rounded-t-xl overflow-t-hidden aspect-[3/4] max-h-[13rem] sm:max-h-[15rem] md:max-h-[18rem] lg:max-h-[22rem] xl:max-h-[22rem]">
+                    <div className="relative rounded-t-xl overflow-t-hidden aspect-[2/3] h-[15rem] sm:h-[14rem] md:h-[16rem] lg:h-[17rem] xl:h-[18rem]">
                       <img
                         src={anime.images.jpg.image_url}
                         alt={anime.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        className="w-full h-full object-cover aspect-[2/3] transition-transform duration-500 group-hover:scale-110"
                         loading="lazy"
                       />
                       {anime.score > 0 && (
