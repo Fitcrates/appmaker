@@ -157,7 +157,7 @@ export function Footer() {
             <div className="space-y-2">
               <div id="google_translate_element" className="hidden"></div>
               <div>
-                <LanguageSelector />
+                <LanguageSelector position='footer' />
               </div>
               <button 
                 onClick={resetTranslation}
