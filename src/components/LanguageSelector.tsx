@@ -10,6 +10,22 @@ interface LanguageSelectorProps {
   position?: 'navbar' | 'footer'; // Default will be 'navbar'
 }
 
+// Define Google Translate types
+declare global {
+  interface Window {
+    google: {
+      translate: {
+        TranslateElement: {
+          getInstance: () => any;
+          InlineLayout: {
+            HORIZONTAL: number;
+          };
+        };
+      };
+    };
+  }
+}
+
 const languages: Language[] = [
   { code: 'en', name: 'English' },
   { code: 'ja', name: '日本語' },
@@ -28,7 +44,9 @@ const languages: Language[] = [
 export function LanguageSelector({ position = 'navbar' }: LanguageSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(languages[0]);
+  const [isTranslateReady, setIsTranslateReady] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   
   // Determine if dropdown should open upward (for footer)
   const openUpward = position === 'footer';
@@ -56,47 +74,87 @@ export function LanguageSelector({ position = 'navbar' }: LanguageSelectorProps)
     
     // Fix body position
     document.body.style.top = '0px';
-    
-    // Also apply via CSS for redundancy
-    if (!document.getElementById('google-translate-banner-css')) {
-      const style = document.createElement('style');
-      style.id = 'google-translate-banner-css';
-      style.innerHTML = `
-        .goog-te-banner-frame,
-        iframe.goog-te-banner-frame,
-        .goog-te-banner-frame.skiptranslate,
-        .VIpgJd-ZVi9od-ORHb-OEVmcd,
-        .VIpgJd-ZVi9od-ORHb,
-        .VIpgJd-ZVi9od-l4eHX-hSRGPd {
-          display: none !important;
-        }
-        body {
-          top: 0 !important;
-        }
-      `;
-      document.head.appendChild(style);
-    }
+    document.documentElement.style.top = '0px';
+  };
+
+  // Check if Google Translate is ready
+  const checkTranslateReady = () => {
+    return !!(
+      window.google && 
+      window.google.translate && 
+      window.google.translate.TranslateElement
+    );
   };
 
   const changeLanguage = (lang: Language) => {
     setSelectedLanguage(lang);
     setIsOpen(false);
     
-    // Set Google Translate language
-    const select = document.querySelector('.goog-te-combo') as HTMLSelectElement;
-    if (select) {
-      select.value = lang.code;
-      select.dispatchEvent(new Event('change'));
-      
-      // Hide banner immediately and then again after a delay
-      hideGoogleTranslateBanner();
-      
-      // Apply multiple times with different delays to catch the banner whenever it appears
-      setTimeout(hideGoogleTranslateBanner, 100);
-      setTimeout(hideGoogleTranslateBanner, 300);
-      setTimeout(hideGoogleTranslateBanner, 500);
-      setTimeout(hideGoogleTranslateBanner, 1000);
+    // Different approach for mobile and desktop
+    if (isTranslateReady) {
+      try {
+        // Method 1: Try to use Google Translate API directly
+        const translateInstance = window.google.translate.TranslateElement.getInstance();
+        if (translateInstance && typeof translateInstance.setLanguage === 'function') {
+          translateInstance.setLanguage(lang.code);
+          console.log(`Changed language to ${lang.name} using API`);
+        } else {
+          // Method 2: Use the select element approach as fallback
+          const select = document.querySelector('.goog-te-combo') as HTMLSelectElement;
+          if (select) {
+            select.value = lang.code;
+            
+            // Use a more compatible event triggering for mobile
+            if (isMobile) {
+              // For mobile browsers
+              const event = document.createEvent('HTMLEvents');
+              event.initEvent('change', true, false);
+              select.dispatchEvent(event);
+              
+              // Touch event for mobile
+              const touchEvent = document.createEvent('TouchEvent');
+              touchEvent.initEvent('touchend', true, true);
+              select.dispatchEvent(touchEvent);
+            } else {
+              // For desktop browsers
+              select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            console.log(`Changed language to ${lang.name} using select element`);
+          }
+        }
+      } catch (error) {
+        console.error('Error changing language:', error);
+        
+        // Last resort: Try to directly use Google's translation approach
+        try {
+          // This accesses the internal structure directly - may break with Google updates
+          const translateFrame = document.querySelector('.goog-te-menu-frame') as HTMLIFrameElement;
+          if (translateFrame && translateFrame.contentDocument) {
+            const items = translateFrame.contentDocument.querySelectorAll('.goog-te-menu2-item');
+            items.forEach(item => {
+              if (item.textContent?.includes(lang.name)) {
+                (item as HTMLElement).click();
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Final fallback failed:', e);
+        }
+      }
+    } else {
+      console.warn('Google Translate not ready yet. Language change queued.');
+      // Queue the language change for when translate is ready
+      window.setTimeout(() => {
+        if (checkTranslateReady()) {
+          changeLanguage(lang);
+        }
+      }, 1000);
     }
+    
+    // Hide banner in all cases
+    hideGoogleTranslateBanner();
+    setTimeout(hideGoogleTranslateBanner, 300);
+    setTimeout(hideGoogleTranslateBanner, 1000);
   };
 
   // Close dropdown when clicking outside
@@ -111,6 +169,20 @@ export function LanguageSelector({ position = 'navbar' }: LanguageSelectorProps)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+  }, []);
+
+  // Check for Google Translate API availability
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      if (checkTranslateReady()) {
+        setIsTranslateReady(true);
+        clearInterval(checkInterval);
+        console.log('Google Translate API is ready');
+      }
+    }, 500);
+    
+    // Clean up interval
+    return () => clearInterval(checkInterval);
   }, []);
 
   // Initial setup to hide Google banner
@@ -131,27 +203,36 @@ export function LanguageSelector({ position = 'navbar' }: LanguageSelectorProps)
       attributeFilter: ['style', 'class']
     });
     
-    // Apply multiple times with different delays to catch the banner whenever it appears
-    setTimeout(hideGoogleTranslateBanner, 100);
-    setTimeout(hideGoogleTranslateBanner, 500);
-    setTimeout(hideGoogleTranslateBanner, 1000);
+    // Apply multiple times with different delays
+    const timeouts = [100, 500, 1000, 2000].map(delay => 
+      setTimeout(hideGoogleTranslateBanner, delay)
+    );
     
     // Also set interval to periodically check and hide
-    const intervalId = setInterval(hideGoogleTranslateBanner, 2000);
+    const intervalId = setInterval(hideGoogleTranslateBanner, 3000);
     
-    // Clean up observer and interval on component unmount
+    // Clean up observer and timers on component unmount
     return () => {
       observer.disconnect();
+      timeouts.forEach(clearTimeout);
       clearInterval(intervalId);
     };
   }, []);
 
+  // Add touch events for mobile
+  const handleTouchStart = () => {
+    if (isMobile) {
+      setIsOpen(!isOpen);
+    }
+  };
+
   return (
     <div className="relative w-[60%] notranslate" ref={dropdownRef}>
-      {/* Custom dropdown button */}
+      {/* Custom dropdown button with added touch event */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
+        onTouchStart={handleTouchStart}
         className="flex items-center justify-between w-full px-3 py-2 text-white bg-white/10 backdrop-blur-sm border border-white/20 rounded-md shadow-sm transition-colors hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <span>{selectedLanguage.name}</span>
@@ -172,6 +253,7 @@ export function LanguageSelector({ position = 'navbar' }: LanguageSelectorProps)
               <button
                 key={language.code}
                 onClick={() => changeLanguage(language)}
+                onTouchStart={() => isMobile && changeLanguage(language)}
                 className={`flex w-full items-center px-3 py-2 text-left text-sm transition-colors hover:bg-teal-600/20
                   ${language.code === selectedLanguage.code ? 'bg-teal-600/30 text-white' : 'text-white/80'}`}
               >
@@ -185,17 +267,8 @@ export function LanguageSelector({ position = 'navbar' }: LanguageSelectorProps)
         </div>
       )}
       
-      {/* Hidden select element to work with Google Translate */}
-      <select 
-        className="hidden goog-te-combo" 
-        aria-hidden="true"
-      >
-        {languages.map((lang) => (
-          <option key={lang.code} value={lang.code}>
-            {lang.name}
-          </option>
-        ))}
-      </select>
+      {/* Hidden div for Google Translate to initialize in */}
+      <div id="google_translate_element" className="hidden" aria-hidden="true"></div>
     </div>
   );
 }
