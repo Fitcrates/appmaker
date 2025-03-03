@@ -137,13 +137,13 @@
     
     .card {
       width: 140px;
-      height: 240px;
+      height: 230px;
       left: calc(50% - 80px);
-      top: calc(40% - 120px);
+      top: calc(45% - 120px);
     }
     
     .card .movie-title {
-      font-size: 12px;
+      font-size: 10px;
     }
     
     .cards-container {
