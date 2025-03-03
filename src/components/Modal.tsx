@@ -50,7 +50,9 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
         }}
       >
         <div className=" rounded-lg shadow-xl w-full max-w-4xl max-h-full overflow-y-auto backgroundMain ring-1 ring-white/40">
-          <div className="flex items-center justify-between p-4 border-b">
+        <div className="sticky top-0 backgroundMain ">
+          <div className=" flex items-center justify-between p-4 border-b">
+            
             <h2 className="text-xl font-semibold text-white">{title}</h2>
             <button
               onClick={onClose}
@@ -58,7 +60,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
             >
               <X className="w-6 h-6" />
             </button>
-            
+            </div>
           </div>
           <div className="overflow-y-auto">
             {children}
