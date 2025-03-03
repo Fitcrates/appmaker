@@ -68,7 +68,7 @@ const TopMoviesCarusel: React.FC = () => {
     <div className="carousel-container">
       <div className="carousel">
         <div className="carousel-title ">
-        <img src="/media/lucy.png" className="w-full h-auto max-w-[500px] md:max-w-[550px] lg:max-w-[600px]"></img>
+        <img src="/media/lucy.png" className="w-full h-auto max-w-[500px] md:max-w-[550px] lg:max-w-[600px] "></img>
 
         </div>
         
