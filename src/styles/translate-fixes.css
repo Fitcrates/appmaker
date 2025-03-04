@@ -1,0 +1,170 @@
+/* 
+ * Targeted fixes for Google Translate issues
+ * This file contains CSS that specifically targets Google Translate elements
+ * without affecting other site styling
+ */
+
+/* Remove Google Translate highlight on hover - ONLY target Google classes */
+.goog-text-highlight,
+.VIpgJd-yAWNEb-VIpgJd-fmcmS-sn54Q {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  text-decoration: none !important;
+}
+
+/* Hide the Google Translate feedback window */
+.VIpgJd-yAWNEb-hvhgNd {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Hide Google Translate banner */
+.goog-te-banner-frame,
+.skiptranslate iframe,
+iframe.goog-te-banner-frame,
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf,
+.VIpgJd-ZVi9od-aZ2wEe-OiiCO {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  top: -9999px !important;
+}
+
+/* Fix for body positioning when Google Translate is active */
+body.translated-ltr,
+body.translated-rtl,
+html.translated-ltr,
+html.translated-rtl {
+  top: 0 !important;
+  position: static !important;
+  transform: none !important;
+  margin-top: 0 !important;
+}
+
+/* Fix for RTL languages */
+html[dir="rtl"] {
+  direction: rtl;
+}
+
+/* Fix for the Google Translate widget itself */
+.goog-te-gadget {
+  font-size: 0 !important;
+}
+
+.goog-te-gadget .goog-te-combo {
+  margin: 0 !important;
+}
+
+/* Hide Google Translate attribution */
+.goog-logo-link,
+.goog-te-gadget span a,
+.VIpgJd-ZVi9od-l4eHX-hSRGPd {
+  display: none !important;
+}
+
+.goog-te-gadget span {
+  display: none !important;
+}
+
+/* Target specific Google Translate elements that need fixing */
+.VIpgJd-ZVi9od-ORHb-OEVmcd,
+.VIpgJd-ZVi9od-ORHb,
+.VIpgJd-ZVi9od-l4eHX-hSRGPd,
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf,
+.VIpgJd-ZVi9od-aZ2wEe-OiiCO,
+.VIpgJd-ZVi9od-aZ2wEe-OiiCO-SxQuSe {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  top: -9999px !important;
+}
+
+/* Prevent Google Translate from breaking layout */
+#goog-gt-tt,
+.goog-tooltip,
+.goog-tooltip:hover,
+.goog-text-highlight,
+.goog-text-highlight:hover {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Fix for Google Translate popup */
+.goog-text-highlight {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: inherit !important;
+}
+
+/* Prevent any Google Translate hover effects */
+.goog-text-highlight:hover {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Prevent numeric values from being translated */
+.notranslate {
+  white-space: nowrap !important;
+  unicode-bidi: isolate !important;
+  display: inline-block !important; /* Ensures consistent rendering */
+}
+
+/* Ensure numeric values are never translated */
+[class*="score"],
+[class*="rating"],
+[class*="count"],
+[class*="number"],
+[class*="page"],
+[class*="total"],
+[class*="episodes"],
+[class*="year"] {
+  white-space: nowrap !important;
+  unicode-bidi: isolate !important;
+}
+
+/* Fix for Google Translate container */
+#google_translate_element {
+  visibility: visible !important;
+  display: block !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0.01 !important; /* Not completely invisible to ensure it works */
+  pointer-events: none !important;
+}
+
+/* Fix for the select dropdown */
+.goog-te-combo {
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  opacity: 0.01 !important; /* Not completely invisible to ensure it works */
+}
+
+/* Fix for Google Translate's new UI elements */
+.VIpgJd-suEOdc,
+.VIpgJd-ZVi9od-aZ2wEe {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Ensure translated content doesn't break layout */
+.translated-content {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}

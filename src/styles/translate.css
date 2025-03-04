@@ -1,0 +1,84 @@
+/* Google Translate Widget Styles */
+.google-translate-container {
+  display: block;
+  width: 100%;
+  position: relative;
+  min-height: 40px;
+}
+
+.goog-te-gadget {
+  font-family: inherit !important;
+  color: #374151 !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.goog-te-gadget-simple {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+.goog-te-gadget img {
+  display: none !important;
+}
+
+.goog-te-menu-value {
+  color: #374151 !important;
+  text-decoration: none !important;
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+.goog-te-menu-value span {
+  text-decoration: none !important;
+}
+
+/* Hide the original Google Translate link */
+.goog-te-gadget > span {
+  display: none !important;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  .google-translate-container {
+    padding: 0;
+    min-height: 40px;
+    margin: 0;
+  }
+  
+  .goog-te-combo {
+    width: 100% !important;
+    padding: 0.5rem !important;
+    border-radius: 0.375rem !important;
+    border: 1px solid #e5e7eb !important;
+    background-color: white !important;
+    appearance: menulist !important;
+    -webkit-appearance: menulist !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+    margin: 0 !important;
+  }
+
+  /* Ensure dropdown appears above other elements */
+  .goog-te-menu-frame {
+    max-width: none !important;
+    width: auto !important;
+    z-index: 10001 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  }
+
+  /* Fix for dropdown positioning */
+  .skiptranslate {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .skiptranslate > div {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
