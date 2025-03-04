@@ -126,11 +126,11 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
                 onClick={() => setSelectedAnime(anime)}
               >
                 {/* Image Container */}
-                <div className="relative rounded-t-xl overflow-t-hidden aspect-[3/4]  max-h-[15rem] sm:max-h-[22rem]">
+                <div className="relative rounded-t-xl overflow-t-hidden   max-h-[15rem] sm:max-h-[22rem]">
                   <img
                     src={imageLoadError[anime.mal_id] ? '/124145l.webp' : anime.images.jpg.image_url}
                     alt={anime.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="w-full h-full aspect-[3/4] object-cover transition-transform duration-500 group-hover:scale-110"
                     onError={() => handleImageError(anime.mal_id)}
                     loading="lazy"
                   />
@@ -142,7 +142,7 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
                 </div>
                 
                 {/* Title and Info area below the image */}
-                <div className="h-full p-2 bg-black/20 backdrop-blur-sm border-t border-[#43b5a0]/20">
+                <div className="h-full  p-2 bg-black/20 backdrop-blur-sm border-t border-[#43b5a0]/20">
                       <h3 className="font-medium text-[#F2F5F7] line-clamp-2 text-lg group-hover:text-white 
                       transition-colors duration-200">
                     {anime.title}
@@ -158,7 +158,7 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
             </LazyLoad>
 
             <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
-              <div className="flex gap-2">
+              <div className="flex gap-1">
               <Tooltip content={isInWatchlist[anime.mal_id] ? "Remove from Watchlist" : "Add to Watchlist"}>
                   <button
                     onClick={(e) => {
