@@ -33,6 +33,20 @@ The cache function is accessible at `/.netlify/functions/cache` and accepts the 
 - `filter`: (Optional) Filter parameter (e.g., day of the week for schedules)
 - `type`: (Optional) Type filter (e.g., 'movie' for anime type)
 - `sfw`: (Optional) Safe for work filter (boolean)
+- `bypass_cache`: (Optional) Set to 'true' to bypass the cache and fetch fresh data
+
+### Bypassing the Cache
+
+There are several ways to bypass the cache:
+
+1. Set `bypass_cache=true` in the query parameters
+2. Include a search query (`q` parameter)
+3. Use specific filters that should always return fresh data
+
+The cache is automatically bypassed for:
+- Search queries
+- Requests with specific filters (genres, studios, etc.)
+- Requests that need real-time data
 
 ### Example Usage
 
@@ -59,6 +73,11 @@ fetch('/.netlify/functions/cache?endpoint=/schedules&filter=tuesday&page=1&limit
 
 // Fetch anime list sorted by score from the cache
 fetch('/.netlify/functions/cache?endpoint=/anime&page=1&limit=25&order_by=score&sort=desc&sfw=true')
+  .then(response => response.json())
+  .then(data => console.log(data));
+
+// Bypass cache and fetch fresh data
+fetch('/.netlify/functions/cache?endpoint=/anime&page=1&limit=25&order_by=score&sort=desc&sfw=true&bypass_cache=true')
   .then(response => response.json())
   .then(data => console.log(data));
 ```
