@@ -121,7 +121,7 @@ export const AnimePreview: React.FC<AnimePreviewProps> = ({ isOpen, onClose, ani
       {/* Preview Content */}
       <div className="fixed inset-0 sm:inset-4 md:inset-8 flex items-center justify-center p-4">
         <div 
-          className="backgroundMain w-full max-w-2xl rounded-lg shadow-xl overflow-hidden max-h-[90vh] flex flex-col ring-1 ring-white/20"
+          className="backgroundMain w-full max-w-2xl rounded-lg shadow-xl overflow-hidden max-h-[90vh] mt-12 flex flex-col ring-1 ring-white/20"
           onClick={handleContentClick}
           onTouchStart={handleContentClick}
           onTouchMove={handleContentClick}
