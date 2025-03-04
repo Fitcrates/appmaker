@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Search, Star, Info, Bookmark } from 'lucide-react';
+import { Menu, X, Search, Star, Info, Bookmark, Telescope, MessageSquare, Home } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AuthModal } from './AuthModal';
 import { SearchBarModal } from './SearchBarModal';
@@ -249,7 +249,7 @@ export default function Navbar() {
                 onClick={() => setIsOpen(false)}
                 className="flex items-center px-4 py-2 text-base font-medium text-white hover:bg-[#4ef1d6] hover:text-black rounded-lg"
               >
-                Home
+               <Home className="h-5 w-5 mr-3" /> Home
               </Link>
 
               <Link
@@ -257,7 +257,7 @@ export default function Navbar() {
                 onClick={() => setIsOpen(false)}
                 className="flex items-center px-4 py-2 text-base font-medium text-white hover:bg-[#4ef1d6] hover:text-black rounded-lg"
               >
-                Explore anime
+                <Telescope className="h-5 w-5 mr-3" /> Explore anime
               </Link>
 
               <Link
@@ -265,6 +265,7 @@ export default function Navbar() {
                 onClick={() => setIsOpen(false)}
                 className="flex items-center px-4 py-2 text-base font-medium text-white hover:bg-[#4ef1d6] hover:text-black rounded-lg"
               >
+                <MessageSquare className="h-5 w-5 mr-3" />
                 Forum
               </Link>
             </div>
