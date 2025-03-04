@@ -149,10 +149,16 @@ const GenrePage: React.FC = () => {
         sort: scoredBySort || 'desc'
       };
 
-      // Only add timestamp for requests that should bypass cache
-      if (currentSearchQuery || selectedGenres.length > 0 || selectedStudios.length > 0 || 
-          (showTvSeries && !showMovies) || (!showTvSeries && showMovies)) {
-        params.timestamp = Date.now(); // Add timestamp to force fresh fetch
+      // Check if any filters are applied
+      const hasFilters = currentSearchQuery || 
+                         selectedGenres.length > 0 || 
+                         selectedStudios.length > 0 || 
+                         (showTvSeries && !showMovies) || 
+                         (!showTvSeries && showMovies);
+
+      // Add bypass_cache flag when filters are applied
+      if (hasFilters) {
+        params.bypass_cache = true;
       }
 
       if (currentSearchQuery) {
