@@ -55,6 +55,18 @@ export const CACHEABLE_ENDPOINTS = [
 /**
  * Check if an endpoint should use server-side caching
  */
-export const shouldUseServerCache = (endpoint: string): boolean => {
+export const shouldUseServerCache = (endpoint: string, params?: Record<string, string | number | boolean>): boolean => {
+  // Skip cache if bypass_cache is true
+  if (params && params.bypass_cache) {
+    console.log('Bypassing server cache due to bypass_cache parameter');
+    return false;
+  }
+  
+  // Skip cache for search queries
+  if (params && 'q' in params) {
+    console.log('Bypassing server cache due to search query');
+    return false;
+  }
+  
   return CACHEABLE_ENDPOINTS.some(cacheable => endpoint.startsWith(cacheable));
 };
