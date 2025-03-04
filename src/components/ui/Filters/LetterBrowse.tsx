@@ -98,8 +98,8 @@ export const LetterBrowse = memo(function LetterBrowse({
                 onClick={() => handleLetterSelection(letter)}
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors duration-300 ${
                   selectedLetter === letter
-                    ? 'inset-shadowBlue text-white'
-                    : 'inset-shadow text-white hover:bg-[#fa448c]'
+                    ? 'cyberpunk-neon2-btn text-white'
+                    : 'cyberpunk-neon2-btn pink'
                 }`}
               >
                 {letter}
