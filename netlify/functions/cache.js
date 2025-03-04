@@ -56,6 +56,11 @@ const fetchWithRateLimit = async (url, params = {}) => {
 
 // Get cache key based on endpoint and parameters
 const getCacheKey = (endpoint, params = {}) => {
+  // Skip caching if bypass_cache is true
+  if (params.bypass_cache === 'true') {
+    return null;
+  }
+  
   // Special case for top movies
   if (endpoint === '/top/anime' && params.type === 'movie') {
     return '/top/anime/movie';
@@ -69,7 +74,7 @@ const getCacheKey = (endpoint, params = {}) => {
   // Special case for anime with specific parameters
   if (endpoint === '/anime') {
     // If there's a search query or specific filters, don't cache
-    if (params.q || params.timestamp) {
+    if (params.q || params.bypass_cache) {
       return null; // Skip caching for search queries
     }
     
@@ -191,7 +196,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { endpoint, page = '1', limit = '10', filter, type, sfw } = event.queryStringParameters || {};
+    const { endpoint, page = '1', limit = '10', filter, type, sfw, bypass_cache } = event.queryStringParameters || {};
     
     if (!endpoint) {
       return {
@@ -205,6 +210,7 @@ exports.handler = async (event) => {
     if (filter) params.filter = filter;
     if (type) params.type = type;
     if (sfw) params.sfw = sfw;
+    if (bypass_cache) params.bypass_cache = bypass_cache;
 
     const data = await fetchEndpoint(endpoint, params);
 
