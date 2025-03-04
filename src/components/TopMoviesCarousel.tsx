@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchFromAPI } from '../utils/api';
 import ParallaxGallery from '../components/ParalaxVid';
-import '../AnimeCarusel.css';
+import '../AnimeCarousel.css';
 
 interface Anime {
   mal_id: number;
@@ -16,7 +16,7 @@ interface Anime {
   type: string;
 }
 
-const TopMoviesCarusel: React.FC = () => {
+const TopMoviesCarousel: React.FC = () => {
   const [movies, setMovies] = useState<Anime[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +31,11 @@ const TopMoviesCarusel: React.FC = () => {
         });
 
         if (response?.data) {
-          setMovies(response.data);
+          // Filter out any potential duplicate mal_id entries
+          const uniqueMovies = response.data.filter((movie: Anime, index: number, self: Anime[]) => 
+            index === self.findIndex((m) => m.mal_id === movie.mal_id)
+          );
+          setMovies(uniqueMovies);
         } else {
           setError('Failed to load top movies');
         }
@@ -75,7 +79,7 @@ const TopMoviesCarusel: React.FC = () => {
         <div className="cards-container">
           {movies.map((movie, index) => (
             <Link 
-              key={movie.mal_id}
+              key={`${movie.mal_id}-${index}`}
               to={`/anime/${movie.mal_id}`}
               className="card  "
               style={{
@@ -99,4 +103,4 @@ const TopMoviesCarusel: React.FC = () => {
   );
 };
 
-export default TopMoviesCarusel;
+export default TopMoviesCarousel;
