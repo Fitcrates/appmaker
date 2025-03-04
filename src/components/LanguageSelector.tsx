@@ -171,13 +171,32 @@ export function LanguageSelector({ position = 'navbar' }: LanguageSelectorProps)
     };
   }, []);
 
+  // For mobile: handle touch events outside the dropdown
+  useEffect(() => {
+    const handleTouchOutside = (event: TouchEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) && isOpen) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isMobile) {
+      document.addEventListener('touchend', handleTouchOutside);
+    }
+    
+    return () => {
+      if (isMobile) {
+        document.removeEventListener('touchend', handleTouchOutside);
+      }
+    };
+  }, [isMobile, isOpen]);
+
   // Check for Google Translate API availability
   useEffect(() => {
     const checkInterval = setInterval(() => {
       if (checkTranslateReady()) {
         setIsTranslateReady(true);
         clearInterval(checkInterval);
-        console.log('Google Translate API is ready');
+        
       }
     }, 500);
     
@@ -219,20 +238,19 @@ export function LanguageSelector({ position = 'navbar' }: LanguageSelectorProps)
     };
   }, []);
 
-  // Add touch events for mobile
-  const handleTouchStart = () => {
-    if (isMobile) {
-      setIsOpen(!isOpen);
-    }
+  // Handle button click for both mobile and desktop
+  const toggleDropdown = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsOpen(!isOpen);
   };
 
   return (
     <div className="relative w-[60%] notranslate" ref={dropdownRef}>
-      {/* Custom dropdown button with added touch event */}
+      {/* Custom dropdown button with improved event handling */}
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        onTouchStart={handleTouchStart}
+        onClick={toggleDropdown}
         className="flex items-center justify-between w-full px-3 py-2 text-white bg-white/10 backdrop-blur-sm border border-white/20 rounded-md shadow-sm transition-colors hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <span>{selectedLanguage.name}</span>
@@ -253,7 +271,6 @@ export function LanguageSelector({ position = 'navbar' }: LanguageSelectorProps)
               <button
                 key={language.code}
                 onClick={() => changeLanguage(language)}
-                onTouchStart={() => isMobile && changeLanguage(language)}
                 className={`flex w-full items-center px-3 py-2 text-left text-sm transition-colors hover:bg-teal-600/20
                   ${language.code === selectedLanguage.code ? 'bg-teal-600/30 text-white' : 'text-white/80'}`}
               >
