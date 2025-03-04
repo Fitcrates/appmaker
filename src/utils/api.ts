@@ -229,7 +229,7 @@ export const fetchFromAPI = async <T>(
   const isSearchQuery = params && 'q' in params;
   
   // Check if we should use server-side caching
-  if (!isSearchQuery && shouldUseServerCache(endpoint)) {
+  if (!isSearchQuery && shouldUseServerCache(endpoint, params)) {
     try {
       console.log('Using server cache for:', endpoint);
       return await fetchFromServerCache<T>(endpoint, params || {});
