@@ -179,7 +179,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {isOpen && (
-        <div className="md:hidden bg-white fixed inset-0 z-[9999] ">
+        <div className="lg:hidden bg-white fixed inset-0 z-[9999] ">
         <div className="px-4 py-6 backgroundMain">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Menu</h2>
