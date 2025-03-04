@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { fetchFromAPI } from '../utils/api';
-import { LazyLoad } from '../components/LazyLoad';
+
 import Hero from '../components/Hero';
 import { TopAnime } from '../components/TopAnime';
 import { Schedule } from '../components/Schedule';
 import { getNavigationState } from '../utils/navigationState';
-import TopMoviesCarusel from '../components/TopMoviesCarusel';
-import ParallaxWindow from '../components/ParalaxVid';
+import TopMoviesCarousel from '../components/TopMoviesCarousel';
+
 
 interface Anime {
   mal_id: number;
@@ -173,7 +173,7 @@ function HomePage() {
         />
         <div className="py-0">
       
-        <TopMoviesCarusel />
+        <TopMoviesCarousel />
           
         </div>
       </div>
