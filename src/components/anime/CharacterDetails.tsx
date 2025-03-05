@@ -3,6 +3,7 @@ import { useParams, Link, useLocation } from "react-router-dom";
 import { fetchFromAPI } from "../../utils/api";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { LazyLoad } from "../LazyLoad";
+import Breadcrumbs from "../Breadcrumbs";
 
 interface Character {
   mal_id: number;
@@ -118,17 +119,8 @@ export function CharacterDetails() {
 
   return (
     <div className=" mx-auto min-h-screen max-w-[100rem] space-y-6 px-4 sm:px-6 lg:px-8 mt-24">
-      {/* Back button - show if we have sourceAnimeId or any anime appearances */}
-      {(sourceAnimeId || animeAppearances.length > 0) && (
-        <Link
-          to={`/anime/${sourceAnimeId || animeAppearances[0]?.anime.mal_id}`}
-          className="flex items-center bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon2 mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Anime
-        </Link>
-      )}
-
+      <Breadcrumbs />
+      
       <div className=" rounded-xl p-6 flex flex-col md:flex-row gap-6 items-start">
         <img 
           src={character.images.jpg.image_url} 
@@ -154,7 +146,7 @@ export function CharacterDetails() {
       </div>
 
       <div className="mt-8">
-        <h2 className="bg-clip-text text-[#EC4899] drop-shadow-[0_0_8px_#fa448c] tilt-neon mb-4">Anime Appearances</h2>
+        <h2 className="bg-clip-text text-[#ff13f0] drop-shadow-[0_0_8px_#ff13f0] tilt-neon mb-4">Anime Appearances</h2>
         {isLoadingAppearances ? (
           <div className="flex justify-center py-8">
             <Loader2 className="animate-spin text-blue-500 w-8 h-8" />
