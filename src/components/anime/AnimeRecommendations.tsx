@@ -55,7 +55,7 @@ export const AnimeRecommendations: React.FC<AnimeRecommendationsProps> = ({
 
   return (
     <div className="mt-8">
-      <h2 className="bg-clip-text text-[#EC4899] drop-shadow-[0_0_8px_#fa448c] tilt-neon mb-4">Recommended</h2>
+      <h2 className="bg-clip-text text-[#ff13f0] drop-shadow-[0_0_8px_#ff13f0] tilt-neon mb-4">Suggested</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {recommendations.slice(0, 12).map((rec) => (
           <Link
