@@ -6,6 +6,7 @@ import { AuthModal } from './AuthModal';
 import { SearchBarModal } from './SearchBarModal';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { LanguageSelector } from './LanguageSelector';
+import { prefetchAnimeToWatch, prefetchUserRating } from '../utils/prefetch';
 
 // Ensure the Navbar component is exported as the default export
 export default function Navbar() {
@@ -65,7 +66,7 @@ export default function Navbar() {
   }
 
   return ( 
-    <nav className="fixed w-full  shadow-lg z-[999] top-0 bg-[#2f0468] border-b border-b-[#43b5a0] backdrop-blur-sm">
+    <nav className="fixed w-full  shadow-lg z-[999] top-0 bg-[#2f0468] border-b border-b-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] backdrop-blur-sm">
       <div className="max-w-[100rem] space-y-6 mx-auto justify-center  px-4 sm:px-6 lg:px-8 ">
         <div className="flex justify-between h-16 min-h-[64px] ">
           <div className="flex items-center">
@@ -84,7 +85,7 @@ export default function Navbar() {
                     setIsSearchOpen(true);
                   }
                 }}
-                className="text-white hover:bg-[#ffe921] hover:text-black  p-2 rounded-lg"
+                className="text-white hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#ffe921]   p-2 rounded-lg"
                 aria-label="Search"
               >
                 <Search className="h-5 w-5" />
@@ -141,13 +142,24 @@ export default function Navbar() {
                   </button>
                   <div className="absolute right-0 ring-1 ring-white/40 w-48 backgroundMain   rounded-md shadow-lg py-1 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-150 ease-in-out">
                     <div className="relative -top-2 left-0 right-0 h-2 bg-transparent"></div>
-                    <Link to="/user/ratings" className="block px-4 py-2 text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6]">
+                    <Link 
+                      to="/user/ratings" 
+                      className="block px-4 py-2 text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6]"
+                      onMouseEnter={prefetchUserRating}
+                    >
                       My Ratings
                     </Link>
-                    <Link to="/user/watchlist" className="block px-4 py-2 text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6]">
+                    <Link 
+                      to="/user/watchlist" 
+                      className="block px-4 py-2 text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6]"
+                      onMouseEnter={prefetchAnimeToWatch}
+                    >
                       To Watch List
                     </Link>
-                    <Link to="/user/settings" className="block px-4 py-2 text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6]">
+                    <Link
+                      to="/user/settings"
+                      className="block px-4 py-2 text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6]"
+                    >
                       Account Settings
                     </Link>
                     <hr className="my-1" />
@@ -263,6 +275,7 @@ export default function Navbar() {
                   <Link
                     to="/user/watchlist"
                     onClick={() => setIsOpen(false)}
+                    onMouseEnter={prefetchAnimeToWatch}
                     className="flex items-center px-4 py-2 text-base font-medium text-white hover:bg-[#4ef1d6] hover:text-black rounded-lg"
                   >
                     <Bookmark className="h-5 w-5 mr-3" />
@@ -272,6 +285,7 @@ export default function Navbar() {
                   <Link
                     to="/user/ratings"
                     onClick={() => setIsOpen(false)}
+                    onMouseEnter={prefetchUserRating}
                     className="flex items-center px-4 py-2 text-base font-medium text-white hover:bg-[#4ef1d6] hover:text-black rounded-lg"
                   >
                     <Star className="h-5 w-5 mr-3" />
