@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 
@@ -22,6 +22,13 @@ interface QuickAccessDropdownProps {
 
 export function QuickAccessDropdown({ topAnime, setSelectedAnime, selectedAnime, onAnimeSelect }: QuickAccessDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [displayedAnime, setDisplayedAnime] = useState<AnimeBasic[]>([]);
+
+  // Ensure we're displaying all anime items
+  useEffect(() => {
+    console.log('QuickAccessDropdown received topAnime:', topAnime.length, 'items');
+    setDisplayedAnime(topAnime);
+  }, [topAnime]);
 
   const handleButtonClick = () => {
     setIsOpen(!isOpen);
@@ -37,15 +44,15 @@ export function QuickAccessDropdown({ topAnime, setSelectedAnime, selectedAnime,
     <div className="relative flex-shrink-0 w-full sm:w-64">
       <button
         onClick={handleButtonClick}
-        className="w-full p-3 ring-2 ring-white/40 rounded-lg  text-md text-white flex justify-between items-center"
+        className="w-full p-3 ring-2 ring-white/40 rounded-lg text-md text-white flex justify-between items-center"
       > 
-        <span>{selectedAnime ? selectedAnime.title : 'Quick access (Top 20)'}</span>
+        <span>{selectedAnime ? selectedAnime.title : `Quick access (Top ${displayedAnime.length})`}</span>
         <ChevronDown className="w-4 h-4 text-white" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 backgroundMain rounded-lg shadow-lg ring-1 ring-white/40">
-          {topAnime.map((anime) => (
+        <div className="absolute z-10 w-full mt-1 backgroundMain rounded-lg shadow-lg ring-1 ring-white/40 max-h-96 overflow-y-auto">
+          {displayedAnime.map((anime, index) => (
             <button
               key={anime.mal_id}
               onClick={() => handleOptionClick(anime)}
@@ -54,6 +61,9 @@ export function QuickAccessDropdown({ topAnime, setSelectedAnime, selectedAnime,
               {anime.title}
             </button>
           ))}
+          {displayedAnime.length === 0 && (
+            <div className="p-3 text-white text-center">Loading...</div>
+          )}
         </div>
       )}
     </div>
