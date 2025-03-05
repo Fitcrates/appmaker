@@ -239,21 +239,21 @@ export const fetchFromAPI = async <T>(
     }
   }
   
-  // Check cache first (unless it's a search query)
-  if (!isSearchQuery) {
+  // Check cache first (unless it's a search query or bypass_cache is true)
+  if (!isSearchQuery && !params?.bypass_cache) {
     const cachedData = apiCache.get<T>(cacheKey);
     if (cachedData) {
       console.log('Cache hit for', fullEndpoint);
       return cachedData;
     }
   } else {
-    console.log('Bypassing cache for search query:', params.q);
+    console.log('Bypassing cache for', isSearchQuery ? 'search query' : 'bypass_cache parameter');
   }
 
   // Check if there's already a pending request for this endpoint
   const pendingKey = `pending_${cacheKey}`;
-  // Don't reuse pending requests for search queries
-  if (!isSearchQuery) {
+  // Don't reuse pending requests for search queries or when bypass_cache is true
+  if (!isSearchQuery && !params?.bypass_cache) {
     const pendingPromise = pendingRequests.get(pendingKey);
     if (pendingPromise) {
       console.log('Using pending request for', fullEndpoint);
@@ -279,7 +279,7 @@ export const fetchFromAPI = async <T>(
 
       const data = await response.json();
       // Don't cache search query results
-      if (!isSearchQuery) {
+      if (!isSearchQuery && !params?.bypass_cache) {
         apiCache.set(cacheKey, data, priority);
       }
       pendingRequests.delete(pendingKey);
