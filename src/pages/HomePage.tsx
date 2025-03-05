@@ -8,7 +8,7 @@ import { TopAnime } from '../components/TopAnime';
 import { Schedule } from '../components/Schedule';
 import { getNavigationState } from '../utils/navigationState';
 import TopMoviesCarousel from '../components/TopMoviesCarousel';
-
+import Breadcrumbs from '../components/Breadcrumbs';
 
 interface Anime {
   mal_id: number;
