@@ -120,7 +120,7 @@ const Hero = () => {
           />
           
           {/* Overlay */}
-          <div className="absolute inset-0 bg-black/40  border-b-2 border-white/80" />
+          <div className="absolute inset-0 bg-black/40  border-b border-b-[#4ef1d6] " />
         </div>
 
         {/* Hero Content */}
@@ -133,7 +133,7 @@ const Hero = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5 }}
-                  className="tilt-neon bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6]"
+                  className="tilt-neon5 bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6]"
                 >
                   Discover Anime
                 </motion.h1>
