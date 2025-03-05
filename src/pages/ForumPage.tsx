@@ -67,12 +67,14 @@ export default function ForumPage() {
       try {
         const response = await fetchFromAPI<{ data: AnimeBasic[] }>('/top/anime', {
           limit: '20',
-          filter: 'bypopularity'
+          filter: 'bypopularity',
+          bypass_cache: true // Force fresh data from API
         });
         if (response?.data) {
           const filteredData = hideHentai 
             ? response.data.filter(anime => anime.rating !== 'Rx - Hentai')
             : response.data;
+          console.log('Top anime data received:', filteredData.length, 'items');
           setTopAnime(filteredData);
         }
       } catch (err) {
@@ -98,6 +100,7 @@ export default function ForumPage() {
     // Update state
     setIsLetterLoading(true);
     setError(null);
+    console.log(`Fetching anime by letter: ${letter}, page: ${pageNum}`);
     
     try {
       const response = await fetchFromAPI<{ data: AnimeBasic[], pagination: { has_next_page: boolean, last_visible_page: number } }>('/anime', {
@@ -105,18 +108,21 @@ export default function ForumPage() {
         page: pageNum.toString(),
         limit: '12',
         order_by: 'title',
-        sort: 'asc'
+        sort: 'asc',
+        bypass_cache: true // Force fresh data from API
       });
       
       if (response?.data) {
         const filteredData = hideHentai 
           ? response.data.filter(anime => anime.rating !== 'Rx - Hentai')
           : response.data;
+        console.log(`Letter ${letter} data received:`, filteredData.length, 'items');
         setLetterAnimeList(filteredData);
         
         // Update pagination directly from API response
         setTotalPages(response.pagination.last_visible_page);
         setHasMore(response.pagination.has_next_page);
+        console.log(`Letter ${letter} pagination:`, response.pagination);
       }
     } catch (err) {
       console.error('Error fetching anime by letter:', err);
@@ -141,6 +147,7 @@ export default function ForumPage() {
     setSelectedLetter(letter);
     setPage(1);
     currentPageRef.current = 1; // Update the ref as well
+    setShowResults(true); // Ensure results are shown when a letter is selected
   }, [selectedLetter]);
 
   // Handle page change
