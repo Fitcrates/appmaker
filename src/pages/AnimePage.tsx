@@ -17,6 +17,8 @@ import { Episodes } from '../components/anime/Episodes';
 import { AnimeTrailer } from '../components/anime/AnimeTrailer';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { Tooltip } from '../components/ui/Tooltip';
+import Breadcrumbs from '../components/Breadcrumbs';
+
 
 interface Character {
   character: {
@@ -435,13 +437,7 @@ export function AnimePage() {
               <div className="flex flex-col gap-8 ">
                 {/* Header Section */}
                 <div className="rounded-xl p-6 flex flex-col md:flex-row gap-6 items-start justify-between">
-                  <button
-                    onClick={handleBack}
-                    className="flex items-center bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon2"
-                  >
-                    <ArrowLeft className="bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon2"/>
-                    Back
-                  </button>
+                  <Breadcrumbs />
                 </div>
                
                 <div className="flex flex-col md:flex-row gap-8 ">
@@ -524,7 +520,7 @@ export function AnimePage() {
                     {anime.genres && (
                       <div className="mb-4 text-white">
                         <h3 className="font-medium mb-2 text-white">Genres</h3>
-                        <p>{anime.genres.map((genre) => genre.name).join(', ')}</p>
+                        <p className="text-[#ffe921] drop-shadow-[0_0_8px_#ffe921] tilt-neon2">{anime.genres.map((genre) => genre.name).join(', ')}</p>
                       </div>
                     )}
                    
@@ -544,7 +540,7 @@ export function AnimePage() {
 
                     <div className="flex md:flex-row flex-col w-full gap-8 justify-between mt-12 ">
                       <div className="w-1/1 md:w-1/2">
-                        <h3 className="bg-clip-text text-[#EC4899] drop-shadow-[0_0_8px_#fa448c] tilt-neon4 mb-4">Information</h3>
+                        <h3 className="bg-clip-text text-[#ff13f0] drop-shadow-[0_0_8px_#ff13f0] tilt-neon4 mb-4">Information</h3>
                         <dl className="space-y-2 justify-between w-full ">
                           <div className="flex justify-between border-t ">
                             <dt className="text-white ">Type</dt>
@@ -645,7 +641,7 @@ export function AnimePage() {
                 <div className="mt-8" ref={episodesRef}>
                   {episodes.length > 0 ? (
                     <div>
-                      <h2 className="bg-clip-text text-[#EC4899] drop-shadow-[0_0_8px_#fa448c] tilt-neon mb-4">Episodes</h2>
+                      <h2 className="bg-clip-text text-[#ff13f0] drop-shadow-[0_0_8px_#ff13f0] tilt-neon mb-4">Episodes</h2>
                       <Episodes animeId={Number(id)} episodes={episodes} />
                     </div>
                   ) : isLoadingEpisodes ? (
