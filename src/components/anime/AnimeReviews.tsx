@@ -83,7 +83,7 @@ export const AnimeReviews: React.FC<AnimeReviewsProps> = ({
 
   return (
     <div className="mt-8">
-      <h2 className="bg-clip-text text-[#EC4899] drop-shadow-[0_0_8px_#fa448c] tilt-neon mb-4">Reviews</h2>
+      <h2 className="bg-clip-text text-[#ff13f0] drop-shadow-[0_0_8px_#ff13f0] tilt-neon mb-4">Reviews</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {currentReviews.map((review) => (
           <div
