@@ -111,8 +111,8 @@ export const AnimeCharacters: React.FC<AnimeCharactersProps> = ({ animeId }) => 
 
   return (
     <div className="mt-16">
-      <h2 className="mb-4 bg-clip-text text-[#EC4899] drop-shadow-[0_0_8px_#fa448c] tilt-neon">Characters</h2>
-
+      <h2 className="mb-4 bg-clip-text text-[#ff13f0] drop-shadow-[0_0_8px_#ff13f0] tilt-neon">Personas</h2>
+    
       {isLoading ? (
         <div className="flex justify-center items-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
