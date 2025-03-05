@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Star, Bookmark } from 'lucide-react'; // Import Bookmark here
 import { fetchFromAPI } from '../utils/api';
 import { SearchBar } from '../components/ui/Filters/SearchBar';
@@ -16,6 +16,7 @@ import { useAnimeDetails } from '../hooks/useAnimeDetails';
 import { Slideshow } from '../components/Slideshow';
 import { Anime } from '../types/anime';
 import { useAnimeSort } from '../hooks/useAnimeSort';
+import Breadcrumbs from '../components/Breadcrumbs';
 
 interface Anime {
   mal_id: number;
@@ -66,6 +67,9 @@ const GenrePage: React.FC = () => {
   // Anime sort hook
   const { sortAnimeList } = useAnimeSort();
 
+  // Create a ref to track the initial render for the sort effect
+  const isInitialSortRender = useRef(true);
+
   // Effect to update current page items
   useEffect(() => {
     if (!fullAnimeList.length) return;
@@ -97,7 +101,7 @@ const GenrePage: React.FC = () => {
   }, [fullAnimeList, currentPage, scoredBySort, hideHentai]);
 
   // Fetch anime based on filters
-  const fetchAnime = useCallback(async (page?: number) => {
+  const fetchAnime = useCallback(async (page?: number, bypassCache?: boolean) => {
     setIsSearching(true);
     // Capture the current searchQuery value at the time of execution
     const currentSearchQuery = searchQuery;
@@ -156,8 +160,16 @@ const GenrePage: React.FC = () => {
                          (showTvSeries && !showMovies) || 
                          (!showTvSeries && showMovies);
 
-      // Add bypass_cache flag when filters are applied
-      if (hasFilters) {
+      // Only bypass cache when:
+      // 1. Explicitly changing pages (page parameter is explicitly passed)
+      // 2. When filters are applied
+      // 3. When bypassCache is explicitly set to true
+      const shouldBypassCache = 
+        (page !== undefined && page > 0) || // Only when explicitly changing pages
+        hasFilters || // Only when filters are applied
+        bypassCache; // When bypassCache is explicitly set to true
+      
+      if (shouldBypassCache) {
         params.bypass_cache = true;
       }
 
@@ -235,10 +247,28 @@ const GenrePage: React.FC = () => {
     }
   }, [fetchAnime, shouldSearch]);
 
-  // Effect to trigger search when sort changes
+  // Handle sort changes separately from the shouldSearch mechanism
+  // This prevents multiple competing API calls
   useEffect(() => {
-    setShouldSearch(true);
-    setCurrentPage(1); // Reset to first page when sorting changes
+    // Skip the initial render
+    if (isInitialSortRender.current) {
+      isInitialSortRender.current = false;
+      return;
+    }
+    
+    // Reset to first page when sorting changes
+    setCurrentPage(1);
+    
+    // Clear the anime list to prevent showing stale data
+    setAnimeList([]);
+    
+    // Directly call fetchAnime with explicit bypass_cache for sort changes
+    // This ensures we get fresh data when changing sort order
+    console.log(`Sort changed to ${scoredBySort}, making direct API call with bypass_cache`);
+    fetchAnime(1, true);
+    
+    // Prevent the shouldSearch mechanism from triggering another fetch
+    setShouldSearch(false);
   }, [scoredBySort]);
 
   // Effect to clear fullAnimeList when filters change
@@ -246,20 +276,21 @@ const GenrePage: React.FC = () => {
     setFullAnimeList([]);
   }, [selectedGenres, selectedStudios, showTvSeries, showMovies]);
 
-  // Effect to trigger search when page changes
+  // We'll handle this in handlePageChange instead
+  // This prevents double fetching
   useEffect(() => {
-    setShouldSearch(true);
   }, [currentPage]);
 
   // Initial fetch on mount
   useEffect(() => {
-    fetchAnime();
+    // Pass undefined explicitly to ensure we don't bypass cache on initial load
+    fetchAnime(undefined);
   }, []);
 
   const handleSearch = (page: number) => {
     setCurrentPage(page);
-    // Call fetchAnime directly with the current search query
-    fetchAnime(page);
+    // Call fetchAnime directly with the current search query and explicit bypass_cache flag
+    fetchAnime(page, true);
     
     // Log for debugging
     console.log("Search triggered with query:", searchQuery);
@@ -267,6 +298,8 @@ const GenrePage: React.FC = () => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    // Directly call fetchAnime with the new page and explicit bypass_cache flag
+    fetchAnime(page, true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -339,8 +372,7 @@ const GenrePage: React.FC = () => {
           scoredBySort={scoredBySort}
           setScoredBySort={(sort) => {
             setScoredBySort(sort);
-            setCurrentPage(1);
-            setShouldSearch(true);
+            // Don't set shouldSearch here, we'll handle it in the useEffect
           }}
           showTvSeries={showTvSeries}
           setShowTvSeries={(show) => {
