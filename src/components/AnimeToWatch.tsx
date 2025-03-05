@@ -290,7 +290,7 @@ export function AnimeToWatch() {
   
     {/* Filters and Counter Row */}
     <div className="max-w-[100rem] px-4 sm:px-6 lg:px-8 mx-auto mb-6 mt-12">
-      {/* Search Input - Full Width */}
+      {/* Search Input  */}
       <div className="mb-4 w-full">
         <SearchBar
           searchQuery={searchTerm}
@@ -308,14 +308,14 @@ export function AnimeToWatch() {
         />
         
         <div className="relative flex items-center sm:mt-0">
-          <span className="bg-clip-text text-[#fd5454] drop-shadow-[0_2px_12px_#fd5454] tilt-neon2 px-4 py-2">
+          <span className="bg-clip-text text-[#ff13f0] drop-shadow-[0_2px_12px_#ff13f0] tilt-neon2 px-4 py-2">
             Total in Watchlist: {totalItems}
           </span>
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
             xmlnsXlink="http://www.w3.org/1999/xlink" 
             viewBox="0 0 80 80"
-            className="absolute -right-2 w-12 h-12 md:w-14 md:h-14 stroke-[#fd5454] drop-shadow-[0_0_8px_#fd5454] stroke-2 fill-none"
+            className="absolute -right-2 w-12 h-12 md:w-14 md:h-14 stroke-[#ff13f0] drop-shadow-[0_0_8px_#ff13f0] stroke-2 fill-none"
           >
             <defs>
               <path id="cLinkPath" d="M-1-1v21.3h10.1v39.4h-10.1v21.3h82v-82z"></path>
