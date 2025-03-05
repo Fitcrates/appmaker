@@ -1,6 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Exo:wght@400;700&family=Tilt+Neon&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
 
 @keyframes fadeIn {
   from {
@@ -12,6 +15,7 @@
     transform: translateY(0);
   }
 }
+
 
 .tilt-neon {
   font-family: 'Tilt Neon', cursive; /* Use the imported font */
@@ -28,6 +32,10 @@
 .tilt-neon4 {
   font-family: 'Tilt Neon', cursive; /* Use the imported font */
   font-size: 1.5rem; /* Adjust size as needed */
+}
+.tilt-neon5 {
+  font-family: 'Tilt Neon', cursive; /* Use the imported font */
+  font-size: 4rem; /* Adjust size as needed */
 }
 
 .backgroundMain {
@@ -61,6 +69,8 @@ iframe.goog-te-banner-frame {
 /* Fix for body shifting when Google Translate is active */
 body {
   top: 0 !important;
+  font-family: 'Exo', sans-serif; 
+
 }
 
 /* Hide Google branding but keep functionality */
@@ -770,7 +780,6 @@ input[type="checkbox"]:checked + .checkbox-custom::after {
   justify-content: center;
   border: 2px solid #0ff;
   border-radius: 15px;
-  text-transform: uppercase;
   letter-spacing: 2px;
   overflow: hidden;
   transition: all 0.3s ease;
