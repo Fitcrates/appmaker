@@ -19,7 +19,7 @@ export function LazyLoad({ children, delay: delayMs = 0 }: LazyLoadProps) {
 
   if (!isVisible) {
     return (
-      <div className="animate-pulse bg-gray-200 rounded-lg h-48 w-full"></div>
+      <div className="animate-pulse bg-black/20 rounded-lg  w-full"></div>
     );
   }
 
