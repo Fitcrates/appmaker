@@ -202,7 +202,7 @@ export default function Navbar() {
             <h2 className="text-2xl font-bold text-white">Menu</h2>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-2 rounded-md text-white hover:text-gray-500 hover:bg-gray-100"
+              className="p-2 hover:bg-red-500 text-white hover:text-black rounded-full transition-colors flex-shrink-0"
             >
               <X className="h-6 w-6" />
             </button>
@@ -233,8 +233,13 @@ export default function Navbar() {
 
             {/* Language section */}
             <div className="py-3 border-b border-gray-200">
-              <h3 className="text-sm font-medium text-white mb-3 px-4">Language</h3>
-              <div className="px-4">
+            
+              <h3 className="text-sm font-medium text-white mb-3 px-4">
+              
+              Language</h3>
+              
+              <div className="flex items-center text-white px-4">
+              <Languages size={20} />
                 <LanguageSelector />
               </div>
             </div>
