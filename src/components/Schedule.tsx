@@ -52,26 +52,29 @@ export function Schedule() {
   ];
 
   const SkeletonCard = () => (
-    <div className="relative bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
-      <div className="relative aspect-[3/4]">
-        <div className="absolute inset-0 bg-gray-200" />
-      </div>
-      <div className="p-4 mt-8 h-28">
-        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-        <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-        <div className="space-y-2">
-          <div className="flex items-center gap-1">
-            <div className="h-4 w-4 bg-gray-200 rounded-full"></div>
-            <div className="h-3 bg-gray-200 rounded w-24"></div>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="h-4 w-4 bg-gray-200 rounded-full"></div>
-            <div className="h-3 bg-gray-200 rounded w-32"></div>
+    <div className="relative group h-[28rem] min-h-[28rem]"> 
+      <div className="relative rounded-xl shadow-lg overflow-hidden border border-white/20 cursor-pointer flex flex-col h-full animate-pulse">
+        <div className="relative rounded-t-xl overflow-hidden aspect-[3/4] min-h-[20rem] bg-black/20">
+          <div className="w-full h-full bg-black/20" />
+        </div>
+        <div className="h-full p-2 bg-black/20 backdrop-blur-sm border-t border-[#43b5a0]/20 flex flex-col justify-between">
+          <div className="h-6 bg-black/20 rounded w-3/4 mb-2"></div>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 bg-black/20 rounded-full"></div>
+              <div className="h-3 bg-black/20 rounded w-24"></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 bg-black/20 rounded-full"></div>
+              <div className="h-3 bg-black/20 rounded w-32"></div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
+  
+  
 
   const renderDaySelector = () => (
     <div className="flex flex-wrap   gap-2 mb-6 pb-2 px-1 sm:px-0  mt-6">
@@ -152,7 +155,7 @@ export function Schedule() {
   };
 
   return (
-    <div id="schedule" className="max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8">
+    <div id="schedule" className="max-w-[100rem] space-y-6 mx-auto px-2 sm:px-6 lg:px-8">
     <div className="flex justify-between items-center flex-wrap">
       <h2 className="font-bold text-[#F2F5F7] tracking-tight mt-12 w-auto sm:w-auto">
         <span className="bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon flex flex-wrap">
@@ -189,7 +192,7 @@ export function Schedule() {
       {renderDaySelector()}
 
       {isLoadingData ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 tilt-neon">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 min-h-[50rem] tilt-neon">
           {[...Array(itemsPerPage)].map((_, index) => (
             <SkeletonCard key={index} />
           ))}
@@ -200,29 +203,30 @@ export function Schedule() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 min-h-[50rem]">
             {schedule.map((anime, index) => (
               <div key={`${activeDay}-${anime.mal_id}-${index}`} className="relative group">
                 <LazyLoad>
                   <div
                     className="relative rounded-xl shadow-lg overflow-hidden 
                     transition-all duration-300 hover:scale-105 hover:shadow-xl 
-                    border border-white/20 hover:border-[#fa448c]/40 cursor-pointer flex flex-col h-[23rem] sm:h-[28rem] "
+                    border border-white/20 hover:border-[#fa448c]/40 cursor-pointer flex flex-col h-[23rem] sm:h-[28rem] min-h-[23rem] sm:min-h-[28rem]"
                     onClick={() => setSelectedAnime(anime)}
                   >
                     {/* Image Container */}
-                    <div className="relative rounded-t-xl overflow-t-hidden aspect-[3/4] max-h-[16rem] sm:max-h-[20rem]">
-                      <img
-                        src={imageLoadError[anime.mal_id] ? '/124145l.webp' : anime.images.jpg.image_url}
-                        alt={anime.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        onError={() => handleImageError(anime.mal_id)}
-                        loading="lazy"
-                      />
+                    <div className="relative rounded-t-xl overflow-hidden aspect-[3/4] min-h-[20rem] bg-black/20">
+                    <img
+                      src={imageLoadError[anime.mal_id] ? null : anime.images.jpg.image_url}
+                      alt={anime.title}
+                      className="w-full h-full object-cover"
+                      width="200"  // Set a fixed width (adjust as needed)
+                      height="270" // Set a fixed height (adjust as needed)
+                      onError={() => handleImageError(anime.mal_id)}
+                    />
                       
                       <div className="absolute top-3 left-1 sm:left-3 bg-black/70 backdrop-blur-md rounded-full px-3 py-1.5 flex items-center">
                         <Star className="w-4 h-4 text-[#F59E0B]" />
-                        <span className="ml-1.5 text-sm font-mono text-white">{anime.score || '??'}</span>
+                        <span className="ml-1.5 text-sm font-mono text-white">{anime.score ? anime.score.toFixed(1) : '??'}</span>
                       </div>
                     </div>
                     
