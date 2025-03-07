@@ -274,7 +274,7 @@ export function UserRating() {
       )}
 
       {/* Ratings Grid */}
-      <div className="space-y-6 px-0 max-w-[100rem] mt-12  sm:px-6 lg:px-8 justify-left items-center mx-auto">
+      <div className="space-y-6 px-2 max-w-[100rem] mt-12  sm:px-6 lg:px-8 justify-left items-center mx-auto">
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
