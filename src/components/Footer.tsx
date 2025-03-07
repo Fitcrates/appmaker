@@ -17,6 +17,7 @@ export function Footer() {
       });
     }
   };
+  
 
   function resetTranslation() {
     // Clear Google Translate cookies/local storage to remove saved language preference
@@ -39,8 +40,8 @@ export function Footer() {
   return (
     <footer className="backgroundMain border-t-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6]
  text-white/80 ">
-      <div className="max-w-[100rem] space-y-6 mx-auto justify-center mt-12 px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 ">
+      <div className="max-w-[100rem] space-y-6 mx-auto justify-between mt-12 px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 justify-between ">
           {/* Navigation Links */}
           <div>
             <h3 className="text-lg font-semibold mb-4 text-white">Navigation</h3>
@@ -71,14 +72,14 @@ export function Footer() {
           </div>
 
           {/* Quick Links */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 text-white">Quick Links</h3>
+          <div >
+            <h3 className="text-lg font-semibold mb-4 text-white ">Quick Links</h3>
             <ul className="space-y-2">
               <li>
               <HashLink to="/#topAnime" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
-  <Star size={16} />
-  Top Anime
-</HashLink>
+                    <Star size={16} />
+                    Top Anime
+                </HashLink>
               </li>
               <li>
                 <HashLink to="/#schedule" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
@@ -96,7 +97,7 @@ export function Footer() {
           </div>
 
           {/* Search */}
-          <div>
+          <div >
             <h3 className="text-lg font-semibold mb-4 text-white">Search</h3>
             <ul className="space-y-2">
               <li>
@@ -117,23 +118,7 @@ export function Footer() {
           </div>
 
           {/* Language Selector */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
-              <Languages size={20} /> Language
-            </h3>
-            <div className="space-y-2">
-              <div id="google_translate_element" className="hidden"></div>
-              <div>
-                <LanguageSelector />
-              </div>
-              <button 
-                onClick={resetTranslation}
-                className="mt-2 px-3 py-2 text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] w-[40%]"
-              >
-                Reset to Original
-              </button>
-            </div>
-          </div>
+          
         </div>
 
         <div className="mt-12 pt-8 border-t border-gray-800 text-center text-sm">
