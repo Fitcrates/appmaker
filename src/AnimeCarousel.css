@@ -18,7 +18,7 @@
 }
 .carousel-title {
   position: absolute;
-  top: 30%;
+  top: 35%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 10;
@@ -50,8 +50,8 @@
   
   .card {
     position: absolute;
-    width: 120px;
-    height: 180px;
+    width: 110px;
+    height: 170px;
     left: calc(50% - 60px); /* Center more precisely */
     top: calc(37% - 100px); /* Center vertically */
     border-radius: 10px;
