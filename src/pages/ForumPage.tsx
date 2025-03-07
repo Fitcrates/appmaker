@@ -291,7 +291,7 @@ export default function ForumPage() {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+      <div className="flex flex-col md:flex-row gap-4 items-center md:items-center">
         {/* Anime Search */}
         <div className="relative justify-center items-center flex-1">
           <input
