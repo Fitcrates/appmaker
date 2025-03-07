@@ -41,7 +41,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
   return (
     <div className="max-w-md">
-      <div className="relative flex gap-2  flex-col sm:flex-row  mx-auto">
+      <div className="relative flex gap-4  flex-col sm:flex-row  mx-auto">
         <div className="relative flex-1  mx-auto justify-left items-start ">
           <input
             type="text"
