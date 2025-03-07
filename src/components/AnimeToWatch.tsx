@@ -289,9 +289,9 @@ export function AnimeToWatch() {
     </div>
   
     {/* Filters and Counter Row */}
-    <div className="max-w-[100rem] px-4 sm:px-6 lg:px-8 mx-auto mb-6 mt-12">
+    <div className="max-w-[100rem] px-4 sm:px-6 lg:px-8 mx-auto mb-6 mt-12 gap-4">
       {/* Search Input  */}
-      <div className="mb-4 w-full">
+      <div className="mb-4 w-full mx-auto">
         <SearchBar
           searchQuery={searchTerm}
           setSearchQuery={setSearchTerm}
@@ -336,7 +336,7 @@ export function AnimeToWatch() {
       <div className="text-red-500 px-4 sm:px-6 lg:px-8 mx-auto max-w-[100rem] mb-4">{error}</div>
     )}
   
-    <div className="max-w-[100rem] px-4 sm:px-6 lg:px-8 mx-auto pt-6">
+    <div className="max-w-[100rem] px-2 sm:px-6 lg:px-8 mx-auto pt-6">
       <AnimeGrid>
         {memoizedWatchlist.map((anime) => (
           <div key={anime.id} className="w-full">
