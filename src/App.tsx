@@ -6,6 +6,7 @@ import { ScrollToTop } from './components/ScrollToTop';
 import CookieConsentManager from './cookies/CookieConsent';
 import { DataProvider } from './context/DataContext';
 import { prefetchAnimeToWatch, prefetchUserRating } from './utils/prefetch';
+import LoginPrompt from './components/LoginPrompt';
 
 function App() {
   // Preload critical components when the app starts
@@ -38,6 +39,7 @@ function App() {
           <Layout>
             <div className="container mx-auto">
               <Outlet />
+              <LoginPrompt />
             </div>
           </Layout>
         </div>
