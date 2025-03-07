@@ -214,13 +214,12 @@ export function Schedule() {
                     onClick={() => setSelectedAnime(anime)}
                   >
                     {/* Image Container */}
-                    <div className="relative rounded-t-xl overflow-hidden aspect-[3/4] min-h-[20rem] bg-black/20">
+                    <div className="relative rounded-t-xl overflow-hidden aspect-[3/4] min-h-[16rem] sm:min-h-[20rem] bg-black/20">
                     <img
                       src={imageLoadError[anime.mal_id] ? null : anime.images.jpg.image_url}
                       alt={anime.title}
-                      className="w-full h-full object-cover"
-                      width="200"  // Set a fixed width (adjust as needed)
-                      height="270" // Set a fixed height (adjust as needed)
+                      className="w-full h-full aspect-[3/4] object-cover"
+                     
                       onError={() => handleImageError(anime.mal_id)}
                     />
                       
