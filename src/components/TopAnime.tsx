@@ -56,32 +56,48 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
   }, [currentPage, location.pathname, location.search]);
 
   const SkeletonCard = () => (
-    <div className="relative bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
-      <div className="w-full h-80 bg-gray-200" />
-      <div className="p-4">
-        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+    <div className="relative group">
+      <div 
+        className="relative rounded-xl shadow-lg overflow-hidden 
+        border border-white/20 hover:border-[#fa448c]/40 cursor-pointer flex flex-col h-[21rem] sm:h-[28rem] animate-pulse"
+      >
+        {/* Image Container */}
+        <div className="relative rounded-t-xl overflow-hidden max-h-[15rem] sm:max-h-[22rem] bg-black/20">
+          <div className="w-full h-full aspect-[3/4] bg-black/20" />
+          
+          <div className="absolute top-3 left-1 sm:left-3 bg-black/20 backdrop-blur-md rounded-full px-3 py-1.5 flex items-center">
+            <div className="w-10 h-4 bg-black/20 rounded"></div>
+          </div>
+        </div>
+        
+        {/* Title and Info area */}
+        <div className="h-full p-2 bg-black/20 backdrop-blur-sm border-t border-[#43b5a0]/20">
+          <div className="h-6 bg-black/20 rounded w-3/4 mb-2"></div>
+          <div className="h-4 bg-black/20 rounded w-1/2 absolute bottom-2"></div>
+        </div>
       </div>
     </div>
   );
-
+  
   if (isLoading) {
     return (
-      <div className="space-y-6 px-0 md:px-24 lg:px-48 ">
-        <div className="flex justify-between items-center">
-          <div className="h-8 bg-gray-200 rounded w-32 animate-pulse"></div>
+      <div id="topAnime" className="max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center mb-12">
+          <div className="h-12 bg-black/20 rounded w-48 animate-pulse"></div>
+          <div className="h-8 bg-black/20 rounded w-32 animate-pulse"></div>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 min-h-[50rem]">
           {[...Array(10)].map((_, index) => (
             <SkeletonCard key={index} />
-          ))};
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div id="topAnime" className=" max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8">
+    <div id="topAnime" className=" max-w-[100rem] space-y-6 mx-auto px-2 sm:px-6 lg:px-8">
       <div className="flex  justify-between items-center mb-12">
         <h2 className="text-3xl font-bold text-[#F2F5F7] tracking-tight mt-24">
           <span className="bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon ">
@@ -115,7 +131,7 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
         </div>
         
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 min-h-[50rem]">
         {animeData.map((anime) => (
           <div key={anime.mal_id} className="relative group">
             <LazyLoad>
@@ -137,7 +153,7 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
                   
                   <div className="absolute top-3 left-1 sm:left-3 bg-black/70 backdrop-blur-md rounded-full px-3 py-1.5 flex items-center">
                     <Star className="w-4 h-4 text-[#F59E0B]" />
-                    <span className="ml-1.5 text-sm font-mono text-white notranslate">{anime.score || '??'}</span>
+                    <span className="ml-1.5 text-sm font-mono text-white notranslate">{anime.score ? anime.score.toFixed(1) : '??'}</span>
                   </div>
                 </div>
                 
