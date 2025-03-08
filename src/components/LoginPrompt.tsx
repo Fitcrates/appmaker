@@ -12,8 +12,11 @@ interface LoginPromptProps {
 // Greeting modal that appears first
 const GreetingModal: React.FC<{ onClose: () => void, onSignInClick: () => void }> = ({ onClose, onSignInClick }) => {
   return (
-    <div className="fixed h-screen inset-0 z-[100]  flex items-center justify-center">
-      <div className="backgroundMain rounded-lg ring-1 ring-white/40 shadow-xl overflow-hidden max-w-md w-full">
+    <div className="fixed h-screen inset-0 z-[100] touch-none flex items-center justify-center">
+      {/* Backdrop */}
+      <div className="fixed  bg-black/50  " />
+    <div className="w-full max-w-md mx-auto relative z-[10000] p-4">
+        <div className="backgroundMain rounded-lg p-8 w-full shadow-xl max-h-[90vh] overflow-y-auto ring-1 ring-white/20">
         {/* Header with anime-inspired graphic */}
         <div className=" p-6 text-center text-white">
           <div className="mb-4">
@@ -27,7 +30,7 @@ const GreetingModal: React.FC<{ onClose: () => void, onSignInClick: () => void }
         {/* Message and buttons */}
         <div className="p-6">
           <div className="mb-6 text-center">
-            <p className="text-white mb-4">Log in to discover the full potential of AnimeCrates</p>
+            <h3 className="text-white mb-4">Log in to discover the full potential of AnimeCrates</h3>
             <p className="text-sm text-white">Join our community to rate anime and make personal watchlist</p>
           </div>
           
@@ -49,6 +52,7 @@ const GreetingModal: React.FC<{ onClose: () => void, onSignInClick: () => void }
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 };
