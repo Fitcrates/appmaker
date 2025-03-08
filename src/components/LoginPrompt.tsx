@@ -6,15 +6,13 @@ import { AuthModal } from './AuthModal';
 interface LoginPromptProps {
   type?: 'modal' | 'banner';
   showDelay?: number;
-  dismissDuration?: number; 
+  dismissDuration?: number; // Duration in days to remember dismissal
 }
 
 // Greeting modal that appears first
 const GreetingModal: React.FC<{ onClose: () => void, onSignInClick: () => void }> = ({ onClose, onSignInClick }) => {
   return (
-    // Full screen overlay with higher z-index and pointer events
     <div className="fixed inset-0 z-[9999] bg-black bg-opacity-50 touch-none" style={{height: '100%'}}>
-      {/* Centered modal container */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md px-4">
         <div className="backgroundMain rounded-lg shadow-xl ring-1 ring-white/20 overflow-hidden">
           {/* Header with anime-inspired graphic */}
@@ -65,30 +63,45 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({
   const [showGreetingPrompt, setShowGreetingPrompt] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   
-  // Force component to mount properly on mobile
-  const [isMounted, setIsMounted] = useState(false);
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   
   useEffect(() => {
-    // Ensure component mounts properly
-    setIsMounted(true);
+    // Detect if we're on mobile
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+      return /android|webos|iphone|ipad|ipod|blackberry|IEMobile|Opera Mini/i.test(userAgent);
+    };
+    
+    setIsMobile(checkMobile());
     
     // Check if user has previously dismissed the prompt
     const checkDismissed = () => {
-      const dismissed = localStorage.getItem('login-prompt-dismissed');
-      if (dismissed) {
-        const dismissedDate = new Date(dismissed);
-        const now = new Date();
-        // If the dismissal period has expired, show the prompt again
-        return (now.getTime() - dismissedDate.getTime()) < (dismissDuration * 24 * 60 * 60 * 1000);
+      try {
+        const dismissed = localStorage.getItem('login-prompt-dismissed');
+        if (dismissed) {
+          const dismissedDate = new Date(dismissed);
+          const now = new Date();
+          // If the dismissal period has expired, show the prompt again
+          return (now.getTime() - dismissedDate.getTime()) < (dismissDuration * 24 * 60 * 60 * 1000);
+        }
+        return false;
+      } catch (error) {
+        console.error("Error checking localStorage:", error);
+        return false;
       }
-      return false;
     };
 
     // Only set timer if user is not authenticated and hasn't dismissed recently
     if (!user && !checkDismissed()) {
+      // For mobile, use a shorter delay to ensure it triggers before any potential issues
+      const delay = isMobile ? Math.min(1000, showDelay) : showDelay;
+      
+      console.log("Setting timeout to show greeting prompt...");
       const timer = setTimeout(() => {
+        console.log("Showing greeting prompt now");
         setShowGreetingPrompt(true);
-      }, showDelay);
+      }, delay);
       
       return () => {
         clearTimeout(timer);
@@ -96,11 +109,32 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({
     }
   }, [user, showDelay, dismissDuration]);
   
+  // Force trigger for mobile if needed
+  useEffect(() => {
+    if (isMobile && !user && !showGreetingPrompt && !showAuthModal) {
+      // Force modal to show on mobile after a short delay if it hasn't shown yet
+      const forceTrigger = setTimeout(() => {
+        const dismissed = localStorage.getItem('login-prompt-dismissed');
+        if (!dismissed) {
+          console.log("Force triggering greeting prompt for mobile");
+          setShowGreetingPrompt(true);
+        }
+      }, 2000);
+      
+      return () => clearTimeout(forceTrigger);
+    }
+  }, [isMobile, user, showGreetingPrompt, showAuthModal]);
+  
   const handleDismiss = () => {
     setShowGreetingPrompt(false);
     setShowAuthModal(false);
-    // Store dismissal timestamp in localStorage
-    localStorage.setItem('login-prompt-dismissed', new Date().toISOString());
+    
+    try {
+      // Store dismissal timestamp in localStorage
+      localStorage.setItem('login-prompt-dismissed', new Date().toISOString());
+    } catch (error) {
+      console.error("Error setting localStorage:", error);
+    }
   };
   
   const handleSignInClick = () => {
@@ -108,10 +142,13 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({
     setShowAuthModal(true);
   };
   
-  // If user is authenticated or component not mounted, don't render anything
-  if (!isMounted || user) {
+  // If user is authenticated, don't render anything
+  if (user) {
     return null;
   }
+  
+  // For testing purposes - uncomment this line to force the modal to show
+  // if (!showGreetingPrompt && !showAuthModal) setShowGreetingPrompt(true);
   
   return (
     <>
