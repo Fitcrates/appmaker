@@ -1,135 +1,157 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { useLanguage } from '../context/LanguageContext';
-import { translations } from '../translations/translations';
-import { usePrefetchRoute } from '../hooks/usePrefetchRoute';
+import { AuthModal } from './AuthModal';
 
-const BlogPromoModal = () => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [hasShown, setHasShown] = useState(false);
-  const { language } = useLanguage();
-  const t = translations[language].modalblog;
-  const modalRef = useRef<HTMLDivElement>(null);
-  const prefetchRoute = usePrefetchRoute();
+interface LoginPromptProps {
+  type?: 'modal' | 'banner';
+  showDelay?: number;
+  dismissDuration?: number; // Duration in days to remember dismissal
+}
 
-  const handleMouseEnter = (path: string) => {
-    prefetchRoute(path);
-  };
-
-  const closeModal = () => {
-    setIsVisible(false);
-  };
-
-  useEffect(() => {
-    // Check if user has already seen the modal in this session
-    const modalShown = sessionStorage.getItem('blogModalShown');
-    if (modalShown) {
-      setHasShown(true);
-      return;
-    }
-
-    const handleScroll = () => {
-      const contactElement = document.getElementById('contact');
-      if (contactElement && !hasShown) {
-        const rect = contactElement.getBoundingClientRect();
-        const windowHeight = window.innerHeight || document.documentElement.clientHeight;
- 
-        const isPartiallyVisible = 
-          (rect.top <= windowHeight && rect.top + 100 >= 0) || 
-          (rect.bottom >= 0 && rect.bottom <= windowHeight);
-        
-        if (isPartiallyVisible) {
-          console.log("Contact element visible, showing modal"); // Debug log
-          setIsVisible(true);
-          setHasShown(true);
-          // Save to session storage to avoid showing again
-          sessionStorage.setItem('blogModalShown', 'true');
-        }
-      }
-    };
-    
-    // Throttle scroll event to improve performance
-    let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
-    const throttledScroll = () => {
-      if (!scrollTimeout) {
-        scrollTimeout = setTimeout(() => {
-          handleScroll();
-          scrollTimeout = null;
-        }, 200);
-      }
-    };
-    
-    window.addEventListener('scroll', throttledScroll);
-    
-    // Initial check in case the element is already in view on page load
-    const initialCheckTimeout = setTimeout(handleScroll, 1000);
-
-    return () => {
-      window.removeEventListener('scroll', throttledScroll);
-      if (scrollTimeout) clearTimeout(scrollTimeout);
-      clearTimeout(initialCheckTimeout);
-    };
-  }, [hasShown]);
-  
-  
-  useEffect(() => {
-    
-    if (!isVisible) return;
-    
-    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
-     
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        closeModal();
-      }
-    };
-
-    // Add events with a small delay to avoid immediate triggering
-    const timeout = setTimeout(() => {
-      document.addEventListener('mousedown', handleOutsideClick);
-      document.addEventListener('touchstart', handleOutsideClick);
-    }, 100);
-
-    return () => {
-      clearTimeout(timeout);
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('touchstart', handleOutsideClick);
-    };
-  }, [isVisible]);
-  
-  if (!isVisible) return null;
-
+// Greeting modal that appears first
+const GreetingModal: React.FC<{ onClose: () => void, onSignInClick: () => void }> = ({ onClose, onSignInClick }) => {
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/90 animate-fadeIn">
-      <div 
-        ref={modalRef} 
-        className="relative bg-[#140F2D] text-white rounded-lg shadow-xl p-4 sm:p-8 max-w-md mx-4 ring-1 ring-teal-300/30 w-full sm:w-[40rem] animate-scaleIn border-t border-white/10 overflow-hidden"
-      >
-        <button 
-          className="absolute top-2 right-2 text-white hover:text-black hover:bg-teal-300 rounded-full w-10 h-10 flex items-center justify-center text-xl transition-all duration-300 transform focus:outline-none focus:ring-2 focus:ring-teal-300 touch-manipulation"
-          onClick={closeModal}
-          aria-label="Close modal"
-        >
-          ✕
-        </button>
+    <div className="fixed h-screen inset-0 z-[100]  flex items-center justify-center">
+      <div className="backgroundMain rounded-lg ring-1 ring-white/40 shadow-xl overflow-hidden max-w-md w-full">
+        {/* Header with anime-inspired graphic */}
+        <div className=" p-6 text-center text-white">
+          <div className="mb-4">
+            {/* WIll add image logo here once created */}
+
+
+          </div>
+          <h2 className="text-white text-xl font-bold">Welcome to AnimeCrates</h2>
+        </div>
         
-        <div className="flex flex-col items-center text-center gap-4 sm:gap-8 relative z-10 mt-4">
-          <h3 className="text-2xl sm:text-3xl font-bold mt-6 font-jakarta tracking-tight text-white">{t.heading}</h3>
+        {/* Message and buttons */}
+        <div className="p-6">
+          <div className="mb-6 text-center">
+            <p className="text-white mb-4">Log in to discover the full potential of AnimeCrates</p>
+            <p className="text-sm text-white">Join our community to rate anime and make personal watchlist</p>
+          </div>
           
-          <p className="mb-2 sm:mb-4 text-left font-jakarta font-light leading-relaxed text-white/90 text-base sm:text-lg">{t.subtitle}</p>
-          
-          <Link 
-            to="/blog" 
-            className="inline-block GlowButton relative "
-            onMouseEnter={() => handleMouseEnter('/blog')}
-            onClick={closeModal}
-          >
-            <span className="relative z-10 font-jakarta">{t.button}</span>
+          {/* Action buttons */}
+          <div className="space-y-3">
+            <button 
+              onClick={onSignInClick}
+              className="w-full cyberpunk-neon-btn  text-white py-2 px-4"
+            >
+              Sign In
+            </button>
             
-          </Link>
+            <button 
+              onClick={onClose}
+              className="w-full cyberpunk-neon-btn pink text-white py-2 px-4"
+            >
+              Continue as Guest
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default BlogPromoModal;
+// Banner component that appears for non-logged users
+const LoginPromptBanner: React.FC<{ onSignInClick: () => void, onClose: () => void }> = ({ onSignInClick, onClose }) => {
+  return (
+    <div className="bg-indigo-100 border-l-4 border-indigo-500 p-4 mb-4">
+      <div className="flex items-center">
+        <div className="flex-shrink-0">
+          <svg className="h-5 w-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
+          </svg>
+        </div>
+        <div className="ml-3">
+          <p className="text-sm text-indigo-700">
+            Log in to discover the full potential of AnimeCrates
+          </p>
+        </div>
+        <div className="ml-auto flex space-x-2">
+          <button 
+            onClick={onSignInClick}
+            className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Sign In
+          </button>
+          <button 
+            onClick={onClose}
+            className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main wrapper component that handles both options
+const LoginPrompt: React.FC<LoginPromptProps> = ({ 
+  type = 'modal', 
+  showDelay = 5000,
+  dismissDuration = 1 // Default to 1 day
+}) => {
+  const { user } = useAuth();
+  const [showGreetingPrompt, setShowGreetingPrompt] = useState<boolean>(false);
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  
+  useEffect(() => {
+    // Check if user has previously dismissed the prompt
+    const checkDismissed = () => {
+      const dismissed = localStorage.getItem('login-prompt-dismissed');
+      if (dismissed) {
+        const dismissedDate = new Date(dismissed);
+        const now = new Date();
+        // If the dismissal period has expired, show the prompt again
+        return (now.getTime() - dismissedDate.getTime()) < (dismissDuration * 24 * 60 * 60 * 1000);
+      }
+      return false;
+    };
+
+    // Only set timer if user is not authenticated and hasn't dismissed recently
+    if (!user && !checkDismissed()) {
+      const timer = setTimeout(() => {
+        setShowGreetingPrompt(true);
+      }, showDelay);
+      
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+  }, [user, showDelay, dismissDuration]);
+  
+  const handleDismiss = () => {
+    setShowGreetingPrompt(false);
+    setShowAuthModal(false);
+    // Store dismissal timestamp in localStorage
+    localStorage.setItem('login-prompt-dismissed', new Date().toISOString());
+  };
+  
+  const handleSignInClick = () => {
+    setShowGreetingPrompt(false);
+    setShowAuthModal(true);
+  };
+  
+  // If user is authenticated, don't render anything
+  if (user) {
+    return null;
+  }
+  
+  return (
+    <>
+      {showGreetingPrompt && (
+        type === 'modal' 
+          ? <GreetingModal onClose={handleDismiss} onSignInClick={handleSignInClick} />
+          : <LoginPromptBanner onClose={handleDismiss} onSignInClick={handleSignInClick} />
+      )}
+      
+      {showAuthModal && (
+        <AuthModal isOpen={true} onClose={handleDismiss} />
+      )}
+    </>
+  );
+};
+
+export default LoginPrompt;
