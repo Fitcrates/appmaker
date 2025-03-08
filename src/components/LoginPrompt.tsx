@@ -6,102 +6,72 @@ import { AuthModal } from './AuthModal';
 interface LoginPromptProps {
   type?: 'modal' | 'banner';
   showDelay?: number;
-  dismissDuration?: number; // Duration in days to remember dismissal
+  dismissDuration?: number; 
 }
 
 // Greeting modal that appears first
 const GreetingModal: React.FC<{ onClose: () => void, onSignInClick: () => void }> = ({ onClose, onSignInClick }) => {
   return (
-    <div className="fixed h-screen inset-0 z-[100] touch-none flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="fixed  bg-black/50  " />
-    <div className="w-full max-w-md mx-auto relative z-[10000] p-4">
-        <div className="backgroundMain rounded-lg p-8 w-full shadow-xl max-h-[90vh] overflow-y-auto ring-1 ring-white/20">
-        {/* Header with anime-inspired graphic */}
-        <div className=" p-6 text-center text-white">
-          <div className="mb-4">
-            {/* WIll add image logo here once created */}
-
-
-          </div>
-          <h2 className="text-white text-xl font-bold">Welcome to AnimeCrates</h2>
-        </div>
-        
-        {/* Message and buttons */}
-        <div className="p-6">
-          <div className="mb-6 text-center">
-            <h3 className="text-white mb-4">Log in to discover the full potential of AnimeCrates</h3>
-            <p className="text-sm text-white">Join our community to rate anime and make personal watchlist</p>
+    // Full screen overlay with higher z-index and pointer events
+    <div className="fixed inset-0 z-[9999] bg-black bg-opacity-50 touch-none" style={{height: '100%'}}>
+      {/* Centered modal container */}
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md px-4">
+        <div className="backgroundMain rounded-lg shadow-xl ring-1 ring-white/20 overflow-hidden">
+          {/* Header with anime-inspired graphic */}
+          <div className="p-6 text-center text-white">
+            <div className="mb-4">
+              {/* Will add image logo here once created */}
+            </div>
+            <h2 className="text-white text-xl font-bold">Welcome to AnimeCrates</h2>
           </div>
           
-          {/* Action buttons */}
-          <div className="space-y-3">
-            <button 
-              onClick={onSignInClick}
-              className="w-full cyberpunk-neon-btn  text-white py-2 px-4"
-            >
-              Sign In
-            </button>
+          {/* Message and buttons */}
+          <div className="p-6">
+            <div className="mb-6 text-center">
+              <h3 className="text-white mb-4">Log in to discover the full potential of AnimeCrates</h3>
+              <p className="text-sm text-white">Join our community to rate anime and make personal watchlist</p>
+            </div>
             
-            <button 
-              onClick={onClose}
-              className="w-full cyberpunk-neon-btn pink text-white py-2 px-4"
-            >
-              Continue as Guest
-            </button>
+            {/* Action buttons */}
+            <div className="space-y-3">
+              <button 
+                onClick={onSignInClick}
+                className="w-full cyberpunk-neon-btn text-white py-2 px-4"
+              >
+                Sign In
+              </button>
+              
+              <button 
+                onClick={onClose}
+                className="w-full cyberpunk-neon-btn pink text-white py-2 px-4"
+              >
+                Continue as Guest
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-    </div>
   );
 };
 
-// Banner component that appears for non-logged users
-const LoginPromptBanner: React.FC<{ onSignInClick: () => void, onClose: () => void }> = ({ onSignInClick, onClose }) => {
-  return (
-    <div className="bg-indigo-100 border-l-4 border-indigo-500 p-4 mb-4">
-      <div className="flex items-center">
-        <div className="flex-shrink-0">
-          <svg className="h-5 w-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
-          </svg>
-        </div>
-        <div className="ml-3">
-          <p className="text-sm text-indigo-700">
-            Log in to discover the full potential of AnimeCrates
-          </p>
-        </div>
-        <div className="ml-auto flex space-x-2">
-          <button 
-            onClick={onSignInClick}
-            className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-          >
-            Sign In
-          </button>
-          <button 
-            onClick={onClose}
-            className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-          >
-            Dismiss
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Main wrapper component that handles both options
+// Main wrapper component
 const LoginPrompt: React.FC<LoginPromptProps> = ({ 
   type = 'modal', 
-  showDelay = 5000,
+  showDelay = 4000,
   dismissDuration = 1 // Default to 1 day
 }) => {
   const { user } = useAuth();
   const [showGreetingPrompt, setShowGreetingPrompt] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   
+  // Force component to mount properly on mobile
+  const [isMounted, setIsMounted] = useState(false);
+  
   useEffect(() => {
+    // Ensure component mounts properly
+    setIsMounted(true);
+    
     // Check if user has previously dismissed the prompt
     const checkDismissed = () => {
       const dismissed = localStorage.getItem('login-prompt-dismissed');
@@ -138,17 +108,15 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({
     setShowAuthModal(true);
   };
   
-  // If user is authenticated, don't render anything
-  if (user) {
+  // If user is authenticated or component not mounted, don't render anything
+  if (!isMounted || user) {
     return null;
   }
   
   return (
     <>
       {showGreetingPrompt && (
-        type === 'modal' 
-          ? <GreetingModal onClose={handleDismiss} onSignInClick={handleSignInClick} />
-          : <LoginPromptBanner onClose={handleDismiss} onSignInClick={handleSignInClick} />
+        <GreetingModal onClose={handleDismiss} onSignInClick={handleSignInClick} />
       )}
       
       {showAuthModal && (
