@@ -12,7 +12,7 @@ interface LoginPromptProps {
 // Greeting modal that appears first
 const GreetingModal: React.FC<{ onClose: () => void, onSignInClick: () => void }> = ({ onClose, onSignInClick }) => {
   return (
-    <div className="fixed h-screen inset-0 z-[100] touch-none flex items-center justify-center">
+    <div className="fixed h-screen inset-0 z-[100]  flex items-center justify-center">
       <div className="backgroundMain rounded-lg ring-1 ring-white/40 shadow-xl overflow-hidden max-w-md w-full">
         {/* Header with anime-inspired graphic */}
         <div className=" p-6 text-center text-white">
