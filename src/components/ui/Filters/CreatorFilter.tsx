@@ -79,7 +79,7 @@ export const CreatorFilter: React.FC<CreatorFilterProps> = ({
                     className="flex items-center ring-2 bg-black/30 text-white text-sm px-2 py-1 rounded-full"
                   >
                     <span className="mr-1">{creator.name}</span>
-                    <span className="mr-1">{creator.about}</span>
+                  
                     <button
                       onClick={() => handleSelect(creator)}
                       className="hover:text-red-500"
