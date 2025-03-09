@@ -67,8 +67,8 @@ const TopMoviesCarousel: React.FC = () => {
   }
 
   return (
-    <div className="max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8 ">
-    <span className='text-left tilt-neon bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] font-bold'>  Top Movies</span>
+    <div className="max-w-[100rem] space-y-6 mx-auto px-0 sm:px-6 lg:px-8 mt-12">
+    <span className='text-left tilt-neon bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] font-bold '>  Top Movies</span>
     <div className="carousel-container">
       <div className="carousel">
         <div className="carousel-title ">
