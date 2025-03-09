@@ -1,18 +1,10 @@
-/**
- * Utility for fetching data from the Netlify serverless cache function
- * This helps reduce API calls to Jikan API by using our server-side cache
- */
+
 
 import { RequestPriority } from './api';
 
 const NETLIFY_CACHE_URL = '/.netlify/functions/cache';
 
-/**
- * Fetch data from the server cache
- * @param endpoint The Jikan API endpoint (e.g., '/top/anime')
- * @param params Additional parameters for the request
- * @returns The API response data
- */
+
 export const fetchFromServerCache = async <T>(
   endpoint: string,
   params: Record<string, string | number | boolean> = {}
@@ -49,7 +41,7 @@ export const CACHEABLE_ENDPOINTS = [
   '/top/anime',
   '/seasons/now',
   '/schedules',
-  '/anime'  // Add this endpoint for GenrePage
+  '/anime'  
 ];
 
 /**
@@ -65,6 +57,12 @@ export const shouldUseServerCache = (endpoint: string, params?: Record<string, s
   // Skip cache for search queries
   if (params && 'q' in params) {
     console.log('Bypassing server cache due to search query');
+    return false;
+  }
+  
+  // Skip cache for pagination beyond page 1
+  if (params && params.page && Number(params.page) > 1) {
+    console.log('Bypassing server cache for pagination beyond page 1');
     return false;
   }
   
