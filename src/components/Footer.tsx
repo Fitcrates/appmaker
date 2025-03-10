@@ -57,13 +57,13 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="https://jikan.moe/" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
+                <Link to="https://docs.api.jikan.moe/" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
                   <Handshake size={16} />
                   Featuring Jikan API
                 </Link>
               </li>
               <li>
-                <Link to="https://appcrates.pl" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
+                <Link to="https://appcrates.netlify.app" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
                   <Contact size={16} />
                   Contact
                 </Link>
@@ -88,10 +88,10 @@ export function Footer() {
                 </HashLink>
                 </li>
                 <li>
-                <HashLink to="/#forum" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
+                <Link to="/forum" className="text-sm text-white hover:bg-clip-text hover:text-[#4ef1d6] hover:drop-shadow-[0_0_8px_#4ef1d6] flex items-center gap-2">
                   <MessageSquare size={16} />
                   Forum
-                </HashLink>
+                </Link>
               </li>
             </ul>
           </div>
