@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
 
+// Extend Window interface to include Google Analytics properties
+declare global {
+  interface Window {
+    dataLayer: any[];
+    gtag: (...args: any[]) => void;
+    [key: string]: any; // This allows indexing with string keys like 'ga-disable-G-08E4J4TED7'
+  }
+}
+
 export type CookieConsent = {
   essential: boolean;
   analytics: boolean;
@@ -14,6 +23,9 @@ const defaultConsent: CookieConsent = {
   timestamp: new Date().toISOString(),
 };
 
+// Google Analytics Measurement ID
+const GA_MEASUREMENT_ID = 'G-08E4J4TED7';
+
 export const CookieConsentManager: React.FC = () => {
   const [showBanner, setShowBanner] = useState(false);
   const [consent, setConsent] = useState<CookieConsent>(defaultConsent);
@@ -22,15 +34,23 @@ export const CookieConsentManager: React.FC = () => {
     const storedConsent = localStorage.getItem('cookieConsent');
     if (!storedConsent) {
       setShowBanner(true);
+      // Disable Google Analytics by default until consent is given
+      window[`ga-disable-${GA_MEASUREMENT_ID}`] = true;
     } else {
       try {
-        setConsent(JSON.parse(storedConsent));
+        const parsedConsent = JSON.parse(storedConsent) as CookieConsent;
+        setConsent(parsedConsent);
+        
+        // Apply stored consent settings to Google Analytics
+        window[`ga-disable-${GA_MEASUREMENT_ID}`] = !parsedConsent.analytics;
       } catch (error) {
         console.error('Error parsing cookie consent:', error);
         // If there's an error parsing, show the banner and use default consent
         setShowBanner(true);
         // Remove the invalid data
         localStorage.removeItem('cookieConsent');
+        // Disable Google Analytics until consent is given
+        window[`ga-disable-${GA_MEASUREMENT_ID}`] = true;
       }
     }
   }, []);
@@ -68,13 +88,22 @@ export const CookieConsentManager: React.FC = () => {
     setConsent(newConsent);
     setShowBanner(false);
     
-    // Apply consent settings
-    if (!newConsent.analytics) {
-      // Disable Google Analytics
-      window['ga-disable-GA_MEASUREMENT_ID'] = true;
-    }
+    // Apply consent settings to Google Analytics
+    window[`ga-disable-${GA_MEASUREMENT_ID}`] = !newConsent.analytics;
     
-    // You can add more cookie management logic here
+    // Reload the page if analytics setting changed to ensure GA is properly initialized/disabled
+    const currentConsent = localStorage.getItem('cookieConsent');
+    if (currentConsent) {
+      try {
+        const parsedConsent = JSON.parse(currentConsent) as CookieConsent;
+        if (parsedConsent.analytics !== newConsent.analytics) {
+          // Only reload if the analytics setting actually changed
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Error comparing cookie consent:', error);
+      }
+    }
   };
 
   if (!showBanner) return null;
