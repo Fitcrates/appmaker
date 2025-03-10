@@ -73,7 +73,7 @@ export default function Navbar() {
             {/* Desktop navigation */}
             <div className="flex-shrink-0 flex items-center mr-4 ">
               <Link to="/" className="bg-clip-text text-[#ffe921] drop-shadow-[0_0_8px_#ffe921] tilt-neon3  leading-tight notranslate">
-                AnimeCrates
+              AnimeVersum
               </Link>
               
             </div>
