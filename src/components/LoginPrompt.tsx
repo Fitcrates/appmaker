@@ -20,13 +20,13 @@ const GreetingModal: React.FC<{ onClose: () => void, onSignInClick: () => void }
             <div className="mb-4">
               {/* Will add image logo here once created */}
             </div>
-            <h1 className="text-white text-3xl font-bold">Welcome to AnimeCrates</h1>
+            <h1 className="text-white text-3xl font-bold">Welcome to AnimeVersum</h1>
           </div>
           
           {/* Message and buttons */}
           <div className="p-6">
             <div className="mb-6 text-center">
-              <h3 className="text-white mb-2 text-xl">Log in to discover the full potential of AnimeCrates</h3>
+              <h3 className="text-white mb-2 text-xl">Log in to discover the full potential of AnimeVersum</h3>
               <p className="text-sm text-white">Join our community to rate anime and make personal watchlist</p>
             </div>
             
