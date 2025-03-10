@@ -2,19 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link href="https://fonts.googleapis.com/css2?family=Tilt+Neon&display=swap" rel="stylesheet">
-    <link rel="apple-touch-icon" sizes="180x180" href="/src/public/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="description" content="AnimeVersum - Discover anime, explore your favorite genres, and find new series to watch. Your ultimate anime discovery platform.">
+    <meta name="keywords" content="anime, anime series, anime discovery, anime genres, watch anime, anime recommendations">
+    <meta name="author" content="AnimeVersum">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="AnimeVersum - Discover Your Next Favorite Anime">
+    <meta property="og:description" content="Discover anime, explore genres, and find your next binge-worthy anime series on AnimeVersum.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://animeversum.netlify.app/">
+    <meta property="og:image" content="https://animeversum.netlify.app/src/public/og-image.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    
+    
+    <title>AnimeVersum - Discover & Explore Anime Series</title>
+    
+    <!-- Preconnect to necessary domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Favicon links -->
     <link rel="icon" type="image/png" sizes="32x32" href="/src/public/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/src/public/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/src/public/apple-touch-icon.png">
     <link rel="manifest" href="/src/public/site.webmanifest">
     <link rel="mask-icon" href="/src/public/safari-pinned-tab.svg" color="#5bbad5">
     <meta name="msapplication-TileColor" content="#da532c">
-    <meta name="theme-color" content="#ffffff">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="AnimeCrates - Discover Anime,
-    Explore your favorite genres and find new series to watch." />
-    <title>AnimeCrates</title>
-    <!-- Add translation banner hiding styles early -->
+    
+    <!-- Critical CSS inline -->
     <style>
       .goog-te-banner-frame,
       iframe.goog-te-banner-frame,
@@ -27,20 +42,30 @@
       body, html {
         top: 0 !important;
         position: static !important;
+       
       }
+      
     </style>
+    
+    <!-- Load font with display=swap -->
+    <link href="https://fonts.googleapis.com/css2?family=Tilt+Neon&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Tilt+Neon&display=swap" rel="stylesheet">
+    </noscript>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Google Translate element to initialize the API -->
+    <!-- Google Translate element -->
     <div id="google_translate_element" style="display:none"></div>
     
-    <script type="text/javascript">
+    <!-- Main app script -->
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Deferred Google Translate script -->
+    <script>
       // Function to hide Google Translate banner
       function hideGoogleTranslateBanner() {
-        // Target all possible banner elements
         const selectors = [
           '.goog-te-banner-frame',
           'iframe.goog-te-banner-frame',
@@ -59,73 +84,69 @@
           });
         });
         
-        // Fix body position
         document.body.style.top = '0px';
         document.documentElement.style.top = '0px';
       }
 
       // Initialize Google Translate
       function googleTranslateElementInit() {
-        // Check if we're on mobile
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         
-        // Create translate element with appropriate settings
         new google.translate.TranslateElement({
           pageLanguage: 'en',
           includedLanguages: 'ar,en,de,es,fr,hi,it,ja,ko,pl,pt,ru,zh-CN',
           layout: google.translate.TranslateElement.InlineLayout.HORIZONTAL,
           autoDisplay: false,
-          gaTrack: false,
-          gaId: ''
+          gaTrack: false
         }, 'google_translate_element');
         
-        // Special handling for mobile
         if (isMobile) {
-          console.log("Mobile device detected, applying special handling");
-          
-          // Add additional compatibility tweaks for mobile browsers
-          document.addEventListener('touchend', function() {
-            hideGoogleTranslateBanner();
-          }, { passive: true });
+          document.addEventListener('touchend', hideGoogleTranslateBanner, { passive: true });
         }
         
-        // Hide banner immediately and with multiple delays
         hideGoogleTranslateBanner();
-        [100, 300, 500, 1000, 2000].forEach(delay => {
+        [100, 500, 1000].forEach(delay => {
           setTimeout(hideGoogleTranslateBanner, delay);
         });
         
-        // Set up interval to periodically check and hide
         setInterval(hideGoogleTranslateBanner, 3000);
-        
-        // Expose translate API to window for debugging
-        window.translateDebug = {
-          hideGoogleTranslateBanner,
-          isTranslateReady: !!window.google?.translate?.TranslateElement
-        };
       }
-    
-      // Load Google Translate script earlier in the page lifecycle
+      
+      // Load Google Translate script with defer
       document.addEventListener('DOMContentLoaded', function() {
-        // Load Google Translate script
-        const script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-        document.head.appendChild(script);
-        
-        // Set up MutationObserver to detect DOM changes
-        const observer = new MutationObserver(function() {
-          hideGoogleTranslateBanner();
-        });
-        
-        // Start observing
-        observer.observe(document.body, { 
-          childList: true, 
-          subtree: true,
-          attributes: true,
-          attributeFilter: ['style', 'class']
-        });
+        // Wait for critical content to load first
+        setTimeout(() => {
+          const script = document.createElement('script');
+          script.type = 'text/javascript';
+          script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+          script.defer = true;
+          document.head.appendChild(script);
+          
+          const observer = new MutationObserver(hideGoogleTranslateBanner);
+          observer.observe(document.body, { 
+            childList: true, 
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['style', 'class']
+          });
+        }, 1000);
       });
+    </script>
+    
+    <!-- Structured data for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "AnimeVersum",
+      "url": "https://animeversum.netlify.app/",
+      "description": "Discover anime, explore genres, and find new series to watch",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://animeversum.netlify.app/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
     </script>
   </body>
 </html>
