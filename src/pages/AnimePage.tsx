@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchFromAPI, RequestPriority } from '../utils/api';
+import { fetchFromAPI } from '../utils/api';
 import { Anime } from '../types/anime';
 import { AnimeCharacters } from '../components/anime/AnimeCharacters';
 import { AnimeReviews } from '../components/anime/AnimeReviews';
 import { AnimeRecommendations } from '../components/anime/AnimeRecommendations';
 import { Episodes } from '../components/anime/Episodes';
 import type { Review } from '../types/review';
-import type { Episode } from '../types/episode';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { Modal } from '../components/Modal';
 import { StarRating } from '../components/StarRating';
@@ -29,207 +28,175 @@ interface AnimeRecommendation {
   };
 }
 
+interface APIResponse<T> {
+  data: T;
+  pagination?: {
+    last_visible_page: number;
+    has_next_page: boolean;
+  };
+}
+
 export function AnimePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [anime, setAnime] = useState<Anime | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [recommendations, setRecommendations] = useState<AnimeRecommendation[]>([]);
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentReviewPage, setCurrentReviewPage] = useState(1);
+  const [currentRecommendationsPage, setCurrentRecommendationsPage] = useState(1);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
   const [userRating, setUserRating] = useState<number | null>(0);
   const [ratingMessage, setRatingMessage] = useState<string | null>(null);
   const { isInWatchlist, addToWatchlist, removeFromWatchlist } = useWatchlist();
-  const [recommendationsPage, setRecommendationsPage] = useState(1);
-  const recommendationsPerPage = 10;
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const mounted = useRef(false);
 
+  // Loading states
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+  const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const reviewsPerPage = 3;
-  const totalPages = Math.ceil(reviews.length / reviewsPerPage);
+  const recommendationsPerPage = 12;
 
-  // Track loading states to prevent duplicate requests
-  const [hasLoadedReviews, setHasLoadedReviews] = useState(false);
-  const [hasLoadedRecommendations, setHasLoadedRecommendations] = useState(false);
-  const [hasLoadedEpisodes, setHasLoadedEpisodes] = useState(false);
+  // Refs to track loading states
+  const reviewsLoaded = useRef(false);
+  const episodesLoaded = useRef(false);
+  const recommendationsLoaded = useRef(false);
 
-  // References to track in-progress requests
-  const animeRequestRef = useRef(false);
-  const reviewsRequestRef = useRef(false);
-  const recommendationsRequestRef = useRef(false);
-  const episodesRequestRef = useRef(false);
-
-  // References for intersection observer
+  // Add refs for intersection observers
   const reviewsRef = useRef<HTMLDivElement>(null);
-  const recommendationsRef = useRef<HTMLDivElement>(null);
   const episodesRef = useRef<HTMLDivElement>(null);
+  const recommendationsRef = useRef<HTMLDivElement>(null);
 
   const loadReviews = useCallback(async () => {
-    // Skip if already loaded, loading, or a request is in progress
-    if (!id || hasLoadedReviews || reviewsRequestRef.current) return;
-
-    reviewsRequestRef.current = true;
-    setIsLoading(true);
-    console.log('Loading reviews for anime:', id);
-
+    if (!id || reviewsLoaded.current) return;
+    
+    setIsLoadingReviews(true);
     try {
-      const response = await fetchFromAPI<{data?: Review[]}>(
-        `/anime/${id}/reviews`, 
-        { 
-          page: currentReviewPage,
-          per_page: reviewsPerPage
-        }, 
-        RequestPriority.LOW
-      );
+      const response = await fetchFromAPI<APIResponse<Review[]>>(`/anime/${id}/reviews`);
       
-      console.log('Reviews API response:', response);
-      if (response && response.data) {
-        const validReviews = response.data.filter((review: any) => review && review.review && review.user);
-        console.log('Valid reviews count:', validReviews.length);
-        setReviews(validReviews);
-      } else {
-        console.log('No valid reviews data found');
-        setReviews([]);
+      if (response?.data && Array.isArray(response.data)) {
+        setReviews(response.data);
       }
-      setHasLoadedReviews(true);
-    } catch (error) {
-      if (mounted.current) {
-        console.error('Error loading reviews:', error);
-      }
+    } catch (err) {
+      console.error('Error loading reviews:', err);
     } finally {
-      if (mounted.current) {
-        setIsLoading(false);
-        reviewsRequestRef.current = false;
-      }
+      reviewsLoaded.current = true;
+      setIsLoadingReviews(false);
     }
-  }, [id, hasLoadedReviews, currentReviewPage, reviewsPerPage]);
+  }, [id]);
 
   const loadRecommendations = useCallback(async () => {
-    // Skip if already loaded, loading, or a request is in progress
-    if (!id || hasLoadedRecommendations || recommendationsRequestRef.current) return;
-
-    recommendationsRequestRef.current = true;
-    setIsLoading(true);
-    console.log('Loading recommendations for anime:', id);
-
+    if (!id || recommendationsLoaded.current) return;
+    
     try {
-      const response = await fetchFromAPI<{data?: AnimeRecommendation[]}>(
-        `/anime/${id}/recommendations`, 
-        {}, 
-        RequestPriority.LOW
-      );
+      const response = await fetchFromAPI<APIResponse<AnimeRecommendation[]>>(`/anime/${id}/recommendations`);
       
-      console.log('Recommendations API response:', response);
-      
-      // Safely extract and validate the data
-      const recommendationsData = response && response.data ? [...response.data] : [];
-      console.log('Valid recommendations count:', recommendationsData.length);
-      
-      // Update state with the validated data
-      setRecommendations(recommendationsData);
-      
-      // Preload recommendation images when browser is idle
-      if (recommendationsData.length > 0 && 'requestIdleCallback' in window) {
-        window.requestIdleCallback(() => {
-          recommendationsData.forEach((rec) => {
-            if (rec && rec.entry && rec.entry.images && rec.entry.images.jpg) {
-              const img = new Image();
-              img.src = rec.entry.images.jpg.image_url;
-            }
-          });
-        });
+      if (response?.data && Array.isArray(response.data)) {
+        const validRecommendations = response.data.filter((rec: AnimeRecommendation) => rec && rec.entry);
+        setRecommendations(validRecommendations);
       }
-      
-      setHasLoadedRecommendations(true);
-    } catch (error) {
-      if (mounted.current) {
-        console.error('Error loading recommendations:', error);
-      }
+    } catch (err) {
+      console.error('Error loading recommendations:', err);
     } finally {
-      if (mounted.current) {
-        setIsLoading(false);
-        recommendationsRequestRef.current = false;
-      }
+      recommendationsLoaded.current = true;
+      setIsLoadingRecommendations(false);
     }
-  }, [id, hasLoadedRecommendations]);
+  }, [id]);
 
-  const loadEpisodes = useCallback(async () => {
-    // Skip if already loaded, loading, or a request is in progress
-    if (!id || hasLoadedEpisodes || episodesRequestRef.current) return;
+  // Initial data load
+  useEffect(() => {
+    if (!id) return;
+    
+    const loadInitialData = async () => {
+      if (isLoadingReviews || isLoadingEpisodes || isLoadingRecommendations) return;
+      
+      setIsLoadingReviews(true);
+      setIsLoadingEpisodes(true);
+      setIsLoadingRecommendations(true);
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const response = await fetchFromAPI<APIResponse<Anime>>(`/anime/${id}`);
+        
+        if (response?.data) {
+          setAnime(response.data);
+          // Load additional data in parallel after main data loads
+          await Promise.all([
+            !reviewsLoaded.current && loadReviews(),
+            !recommendationsLoaded.current && loadRecommendations()
+          ]);
+        } else {
+          setError('Failed to load anime data');
+        }
+      } catch (err) {
+        console.error('Error fetching anime data:', err);
+        setError('Failed to load anime data');
+      } finally {
+        setIsLoading(false);
+        setIsLoadingReviews(false);
+        setIsLoadingEpisodes(false);
+        setIsLoadingRecommendations(false);
+      }
+    };
 
-    episodesRequestRef.current = true;
+    loadInitialData();
+  }, [id, loadReviews, loadRecommendations]);
+
+  // Reset states when anime ID changes
+  useEffect(() => {
+    reviewsLoaded.current = false;
+    episodesLoaded.current = false;
+    recommendationsLoaded.current = false;
+    setIsLoadingReviews(false);
+    setIsLoadingEpisodes(false);
+    setIsLoadingRecommendations(false);
+    setCurrentReviewPage(1);
+    setCurrentRecommendationsPage(1);
+    setReviews([]);
+    setError(null);
     setIsLoading(true);
-    console.log('Loading episodes for anime:', id);
-
-    try {
-      const response = await fetchFromAPI<{data?: Episode[]}>(
-        `/anime/${id}/episodes`, 
-        {}, 
-        RequestPriority.LOW
-      );
-      
-      console.log('Episodes API response:', response);
-      if (response && response.data) {
-        setEpisodes(response.data);
-      } else {
-        console.log('No valid episodes data found');
-        setEpisodes([]);
-      }
-      setHasLoadedEpisodes(true);
-    } catch (error) {
-      if (mounted.current) {
-        console.error('Error loading episodes:', error);
-      }
-    } finally {
-      if (mounted.current) {
-        setIsLoading(false);
-        episodesRequestRef.current = false;
-      }
-    }
-  }, [id, hasLoadedEpisodes]);
+    setAnime(null);
+  }, [id]);
 
   // Set up intersection observers for lazy loading sections
   useEffect(() => {
-    if (!id || !mounted.current) return;
+    if (!id) return;
     
     console.log('Setting up intersection observers');
     
     const options = {
       root: null,
-      rootMargin: '200px', // Load content when it's 200px from viewport
+      rootMargin: '200px',
       threshold: 0.1
     };
 
     const reviewsObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
-        if (entry.isIntersecting) {
+        if (entry.isIntersecting && !reviewsLoaded.current) {
           console.log('Reviews section is visible, loading data...');
           loadReviews();
-          reviewsObserver.unobserve(entry.target);
-        }
-      });
-    }, options);
-
-    const recommendationsObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          console.log('Recommendations section is visible, loading data...');
-          loadRecommendations();
-          recommendationsObserver.unobserve(entry.target);
         }
       });
     }, options);
 
     const episodesObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          console.log('Episodes section is visible, loading data...');
-          loadEpisodes();
-          episodesObserver.unobserve(entry.target);
+        if (entry.isIntersecting && !episodesLoaded.current) {
+          console.log('Episodes section is visible');
+          episodesLoaded.current = true;
+        }
+      });
+    }, options);
+
+    const recommendationsObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && !recommendationsLoaded.current) {
+          console.log('Recommendations section is visible, loading data...');
+          loadRecommendations();
         }
       });
     }, options);
@@ -241,136 +208,48 @@ export function AnimePage() {
         reviewsObserver.observe(reviewsRef.current);
       }
 
-      if (recommendationsRef.current) {
-        console.log('Observing recommendations section');
-        recommendationsObserver.observe(recommendationsRef.current);
-      }
-
       if (episodesRef.current) {
         console.log('Observing episodes section');
         episodesObserver.observe(episodesRef.current);
       }
-    }, 500); // Small delay to ensure DOM is ready
+
+      if (recommendationsRef.current) {
+        console.log('Observing recommendations section');
+        recommendationsObserver.observe(recommendationsRef.current);
+      }
+    }, 500);
 
     return () => {
-      console.log('Cleaning up observers');
-      if (reviewsRef.current) reviewsObserver.unobserve(reviewsRef.current);
-      if (recommendationsRef.current) recommendationsObserver.unobserve(recommendationsRef.current);
-      if (episodesRef.current) episodesObserver.unobserve(episodesRef.current);
+      reviewsObserver.disconnect();
+      episodesObserver.disconnect();
+      recommendationsObserver.disconnect();
     };
-  }, [id, loadReviews, loadRecommendations, loadEpisodes]);
+  }, [id, loadReviews, loadRecommendations]);
 
   // Fallback mechanism to ensure data is loaded
   useEffect(() => {
-    if (!id || !mounted.current) return;
+    if (!id) return;
     
     // Set a timeout to load data if not already loaded
     const timeoutId = setTimeout(() => {
-      if (!hasLoadedReviews && !reviewsRequestRef.current) {
+      if (!reviewsLoaded.current) {
         console.log('Fallback: Loading reviews data');
         loadReviews();
       }
       
-      if (!hasLoadedRecommendations && !recommendationsRequestRef.current) {
-        console.log('Fallback: Loading recommendations data');
-        loadRecommendations();
+      if (!episodesLoaded.current) {
+        console.log('Fallback: Loading episodes data');
+        episodesLoaded.current = true;
       }
       
-      if (!hasLoadedEpisodes && !episodesRequestRef.current) {
-        console.log('Fallback: Loading episodes data');
-        loadEpisodes();
+      if (!recommendationsLoaded.current) {
+        console.log('Fallback: Loading recommendations data');
+        loadRecommendations();
       }
     }, 2000); // 2 seconds after component mounts
     
     return () => clearTimeout(timeoutId);
-  }, [id, hasLoadedReviews, hasLoadedRecommendations, hasLoadedEpisodes, loadReviews, loadRecommendations, loadEpisodes]);
-
-  // Load all data immediately after component mounts
-  useEffect(() => {
-    if (!id || !mounted.current) return;
-    
-    console.log('Initial data loading for anime ID:', id);
-    
-    // Small delay to ensure anime data is loaded first
-    const timeoutId = setTimeout(() => {
-      if (!hasLoadedReviews) {
-        console.log('Initial loading of reviews');
-        loadReviews();
-      }
-      
-      if (!hasLoadedRecommendations) {
-        console.log('Initial loading of recommendations');
-        loadRecommendations();
-      }
-      
-      if (!hasLoadedEpisodes) {
-        console.log('Initial loading of episodes');
-        loadEpisodes();
-      }
-    }, 500);
-    
-    return () => clearTimeout(timeoutId);
-  }, [id, hasLoadedReviews, hasLoadedRecommendations, hasLoadedEpisodes, loadReviews, loadRecommendations, loadEpisodes]);
-
-  // Load anime details
-  useEffect(() => {
-    const fetchAnimeData = async () => {
-      if (!id || animeRequestRef.current) return;
-      
-      animeRequestRef.current = true;
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        console.log('Fetching anime data for ID:', id);
-        const data = await fetchFromAPI<{data?: Anime}>(`/anime/${id}`, undefined, RequestPriority.HIGH);
-        console.log('Received anime data:', data);
-        
-        if (data && data.data) {
-          setAnime(data.data);
-          
-          // Load additional data after anime data is loaded
-          setTimeout(() => {
-            loadReviews();
-            loadRecommendations();
-            loadEpisodes();
-          }, 100);
-        } else {
-          console.log('No valid anime data found');
-          setError('Failed to load anime data');
-        }
-      } catch (error) {
-        console.error('Error fetching anime data:', error);
-        setError('Failed to load anime data');
-      } finally {
-        setIsLoading(false);
-        animeRequestRef.current = false;
-      }
-    };
-    
-    fetchAnimeData();
-  }, [id, loadReviews, loadRecommendations, loadEpisodes]);
-
-  // Set mounted ref
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-
-  // Reset state when anime ID changes
-  useEffect(() => {
-    setReviews([]);
-    setRecommendations([]);
-    setEpisodes([]);
-    setHasLoadedReviews(false);
-    setHasLoadedRecommendations(false);
-    setHasLoadedEpisodes(false);
-    setCurrentReviewPage(1);
-    setRecommendationsPage(1);
-    window.scrollTo(0, 0);
-  }, [id]);
+  }, [id, loadReviews, loadRecommendations]);
 
   const handleReviewClick = (review: Review) => {
     setSelectedReview(review);
@@ -617,27 +496,24 @@ export function AnimePage() {
                   <AnimeCharacters animeId={Number(id)} />
                 </div>
 
+                {/* Episodes Section */}
+                <div className="mt-8" id="episodes" ref={episodesRef}>
+                  <Episodes 
+                    animeId={Number(id)} 
+                    isLoading={isLoadingEpisodes}
+                  />
+                </div>
+
                 {/* Reviews Section */}
                 <div className="relative mt-8" id="reviews" ref={reviewsRef}>
                   <AnimeReviews
                     reviews={reviews}
                     currentReviewPage={currentReviewPage}
-                    totalPages={totalPages}
                     reviewsPerPage={reviewsPerPage}
-                    isLoading={isLoading}
-                    hasLoaded={hasLoadedReviews}
+                    isLoading={isLoadingReviews}
+                    hasLoaded={reviewsLoaded.current}
                     onPageChange={setCurrentReviewPage}
                     onReviewClick={handleReviewClick}
-                  />
-                </div>
-
-                {/* Episodes Section */}
-                <div className="mt-8" id="episodes" ref={episodesRef}>
-                  <Episodes 
-                    animeId={Number(id)} 
-                    episodes={episodes} 
-                    isLoading={isLoading}
-                    hasLoaded={hasLoadedEpisodes}
                   />
                 </div>
 
@@ -645,10 +521,10 @@ export function AnimePage() {
                 <div className="mt-8" id="recommendations" ref={recommendationsRef}>
                   <AnimeRecommendations
                     recommendations={recommendations}
-                    isLoading={isLoading}
-                    hasLoaded={hasLoadedRecommendations}
-                    onPageChange={setRecommendationsPage}
-                    currentPage={recommendationsPage}
+                    isLoading={isLoadingRecommendations}
+                    hasLoaded={recommendationsLoaded.current}
+                    onPageChange={setCurrentRecommendationsPage}
+                    currentPage={currentRecommendationsPage}
                     itemsPerPage={recommendationsPerPage}
                   />
                 </div>
