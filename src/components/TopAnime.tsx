@@ -56,10 +56,10 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
   }, [currentPage, location.pathname, location.search]);
 
   const SkeletonCard = () => (
-    <div className="relative group">
+    <div className="relative group mt-24">
       <div 
         className="relative rounded-xl shadow-lg overflow-hidden 
-        border border-white/20 hover:border-[#fa448c]/40 cursor-pointer flex flex-col h-[21rem] sm:h-[28rem] animate-pulse"
+        border border-white/20 hover:border-[#fa448c]/40 cursor-pointer flex flex-col h-[21rem] sm:h-[28rem] animate-pulse "
       >
         {/* Image Container */}
         <div className="relative rounded-t-xl overflow-hidden max-h-[15rem] sm:max-h-[22rem] bg-black/20">
@@ -99,14 +99,14 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
   return (
     <div id="topAnime" className=" max-w-[100rem] space-y-6 mx-auto px-2 sm:px-6 lg:px-8">
       <div className="flex  justify-between items-center mb-12">
-        <h2 className="text-3xl font-bold text-[#F2F5F7] tracking-tight mt-0">
+        <h2 className="text-3xl font-bold text-[#F2F5F7] tracking-tight mt-24">
           <span className="bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon ">
             Top Anime
           </span>
         </h2>
 
 
-        <div className="relative mt-0  flex items-center ">
+        <div className="relative mt-24  flex items-center ">
           <span className="bg-clip-text text-[#ff13f0] drop-shadow-[0_2px_12px_#ff13f0] tilt-neon2 px-4 py-2">
           Page <span className="notranslate">{currentPage}</span> of <span className="notranslate">{pagination?.last_visible_page || 1}</span>
           </span>
