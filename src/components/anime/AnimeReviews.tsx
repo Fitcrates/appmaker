@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, ThumbsUp, Star } from 'lucide-react';
+import { ThumbsUp, Star } from 'lucide-react';
 import { Pagination } from '../Pagination';
 
 interface Review {
@@ -27,7 +27,6 @@ interface Review {
 interface AnimeReviewsProps {
   reviews: Review[];
   currentReviewPage: number;
-  totalPages: number;
   reviewsPerPage: number;
   isLoading: boolean;
   hasLoaded: boolean;
@@ -38,17 +37,19 @@ interface AnimeReviewsProps {
 export const AnimeReviews: React.FC<AnimeReviewsProps> = ({
   reviews,
   currentReviewPage,
-  totalPages,
   reviewsPerPage,
   isLoading,
   hasLoaded,
   onPageChange,
   onReviewClick,
 }) => {
-  const currentReviews = reviews.slice(
-    (currentReviewPage - 1) * reviewsPerPage,
-    currentReviewPage * reviewsPerPage
-  );
+  // Calculate start and end indices for current page
+  const startIndex = (currentReviewPage - 1) * reviewsPerPage;
+  const endIndex = startIndex + reviewsPerPage;
+  const currentReviews = reviews.slice(startIndex, endIndex);
+
+  // Calculate actual total pages based on reviews length
+  const actualTotalPages = Math.ceil(reviews.length / reviewsPerPage);
 
   if (!hasLoaded && !isLoading) {
     return (
@@ -140,7 +141,7 @@ export const AnimeReviews: React.FC<AnimeReviewsProps> = ({
             <div className="flex items-center mb-2">
               <div className="flex items-center">
                 <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                <span className="text-white">{review.score ?? 'N/A'}</span>
+                <span className="text-white notranslate">{review.score ?? 'N/A'}</span>
               </div>
               {review.tags && review.tags.length > 0 && (
                 <div className="ml-4 flex flex-wrap gap-1">
@@ -164,13 +165,13 @@ export const AnimeReviews: React.FC<AnimeReviewsProps> = ({
                   <>
                     <div className="flex items-center text-sm text-white">
                       <ThumbsUp className="w-4 h-4 mr-1" />
-                      <span>{review.reactions.nice || 0}</span>
+                      <span className="notranslate">{review.reactions.nice || 0}</span>
                     </div>
                     <div className="flex items-center text-sm text-white">
-                      <span>❤️ {review.reactions.love_it || 0}</span>
+                      <span>❤️ <span className="notranslate">{review.reactions.love_it || 0}</span></span>
                     </div>
                     <div className="flex items-center text-sm text-white">
-                      <span>😄 {review.reactions.funny || 0}</span>
+                      <span>😄 <span className="notranslate">{review.reactions.funny || 0}</span></span>
                     </div>
                   </>
                 )}
@@ -182,14 +183,14 @@ export const AnimeReviews: React.FC<AnimeReviewsProps> = ({
           </div>
         ))}
       </div>
-      {totalPages > 1 && (
+      <div className="flex justify-center mt-6">
         <Pagination
           currentPage={currentReviewPage}
-          totalPages={totalPages}
+          totalPages={Math.max(1, actualTotalPages)}
           onPageChange={onPageChange}
           isLoading={isLoading}
         />
-      )}
+      </div>
     </div>
   );
 };
