@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchFromAPI } from '../utils/api';
+import { fetchFromAPI, RequestPriority } from '../utils/api';
 import { Anime } from '../types/anime';
 import { AnimeCharacters } from '../components/anime/AnimeCharacters';
 import { AnimeReviews } from '../components/anime/AnimeReviews';
@@ -64,6 +64,7 @@ export function AnimePage() {
   const reviewsLoaded = useRef(false);
   const episodesLoaded = useRef(false);
   const recommendationsLoaded = useRef(false);
+  const initialDataLoaded = useRef(false);
 
   // Add refs for intersection observers
   const reviewsRef = useRef<HTMLDivElement>(null);
@@ -71,11 +72,11 @@ export function AnimePage() {
   const recommendationsRef = useRef<HTMLDivElement>(null);
 
   const loadReviews = useCallback(async () => {
-    if (!id || reviewsLoaded.current) return;
+    if (!id || reviewsLoaded.current || isLoadingReviews) return;
     
     setIsLoadingReviews(true);
     try {
-      const response = await fetchFromAPI<APIResponse<Review[]>>(`/anime/${id}/reviews`);
+      const response = await fetchFromAPI<APIResponse<Review[]>>(`/anime/${id}/reviews`, {}, RequestPriority.LOW);
       
       if (response?.data && Array.isArray(response.data)) {
         setReviews(response.data);
@@ -86,13 +87,18 @@ export function AnimePage() {
       reviewsLoaded.current = true;
       setIsLoadingReviews(false);
     }
-  }, [id]);
+  }, [id, isLoadingReviews]);
 
   const loadRecommendations = useCallback(async () => {
-    if (!id || recommendationsLoaded.current) return;
+    if (!id || recommendationsLoaded.current || isLoadingRecommendations) return;
     
+    setIsLoadingRecommendations(true);
     try {
-      const response = await fetchFromAPI<APIResponse<AnimeRecommendation[]>>(`/anime/${id}/recommendations`);
+      const response = await fetchFromAPI<APIResponse<AnimeRecommendation[]>>(
+        `/anime/${id}/recommendations`,
+        {},
+        RequestPriority.LOW
+      );
       
       if (response?.data && Array.isArray(response.data)) {
         const validRecommendations = response.data.filter((rec: AnimeRecommendation) => rec && rec.entry);
@@ -104,31 +110,22 @@ export function AnimePage() {
       recommendationsLoaded.current = true;
       setIsLoadingRecommendations(false);
     }
-  }, [id]);
+  }, [id, isLoadingRecommendations]);
 
   // Initial data load
   useEffect(() => {
-    if (!id) return;
+    if (!id || initialDataLoaded.current) return;
     
     const loadInitialData = async () => {
-      if (isLoadingReviews || isLoadingEpisodes || isLoadingRecommendations) return;
-      
-      setIsLoadingReviews(true);
-      setIsLoadingEpisodes(true);
-      setIsLoadingRecommendations(true);
       setIsLoading(true);
       setError(null);
       
       try {
-        const response = await fetchFromAPI<APIResponse<Anime>>(`/anime/${id}`);
+        const response = await fetchFromAPI<APIResponse<Anime>>(`/anime/${id}`, {}, RequestPriority.HIGH);
         
         if (response?.data) {
           setAnime(response.data);
-          // Load additional data in parallel after main data loads
-          await Promise.all([
-            !reviewsLoaded.current && loadReviews(),
-            !recommendationsLoaded.current && loadRecommendations()
-          ]);
+          initialDataLoaded.current = true;
         } else {
           setError('Failed to load anime data');
         }
@@ -137,20 +134,18 @@ export function AnimePage() {
         setError('Failed to load anime data');
       } finally {
         setIsLoading(false);
-        setIsLoadingReviews(false);
-        setIsLoadingEpisodes(false);
-        setIsLoadingRecommendations(false);
       }
     };
 
     loadInitialData();
-  }, [id, loadReviews, loadRecommendations]);
+  }, [id]);
 
   // Reset states when anime ID changes
   useEffect(() => {
     reviewsLoaded.current = false;
     episodesLoaded.current = false;
     recommendationsLoaded.current = false;
+    initialDataLoaded.current = false;
     setIsLoadingReviews(false);
     setIsLoadingEpisodes(false);
     setIsLoadingRecommendations(false);
@@ -166,8 +161,6 @@ export function AnimePage() {
   useEffect(() => {
     if (!id) return;
     
-    console.log('Setting up intersection observers');
-    
     const options = {
       root: null,
       rootMargin: '200px',
@@ -176,8 +169,7 @@ export function AnimePage() {
 
     const reviewsObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
-        if (entry.isIntersecting && !reviewsLoaded.current) {
-          console.log('Reviews section is visible, loading data...');
+        if (entry.isIntersecting && !reviewsLoaded.current && !isLoadingReviews) {
           loadReviews();
         }
       });
@@ -186,7 +178,6 @@ export function AnimePage() {
     const episodesObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting && !episodesLoaded.current) {
-          console.log('Episodes section is visible');
           episodesLoaded.current = true;
         }
       });
@@ -194,30 +185,22 @@ export function AnimePage() {
 
     const recommendationsObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
-        if (entry.isIntersecting && !recommendationsLoaded.current) {
-          console.log('Recommendations section is visible, loading data...');
+        if (entry.isIntersecting && !recommendationsLoaded.current && !isLoadingRecommendations) {
           loadRecommendations();
         }
       });
     }, options);
 
-    // Ensure refs are available before observing
-    setTimeout(() => {
-      if (reviewsRef.current) {
-        console.log('Observing reviews section');
-        reviewsObserver.observe(reviewsRef.current);
-      }
-
-      if (episodesRef.current) {
-        console.log('Observing episodes section');
-        episodesObserver.observe(episodesRef.current);
-      }
-
-      if (recommendationsRef.current) {
-        console.log('Observing recommendations section');
-        recommendationsObserver.observe(recommendationsRef.current);
-      }
-    }, 500);
+    // Cleanup previous observers
+    if (reviewsRef.current) {
+      reviewsObserver.observe(reviewsRef.current);
+    }
+    if (episodesRef.current) {
+      episodesObserver.observe(episodesRef.current);
+    }
+    if (recommendationsRef.current) {
+      recommendationsObserver.observe(recommendationsRef.current);
+    }
 
     return () => {
       reviewsObserver.disconnect();
