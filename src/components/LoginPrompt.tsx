@@ -56,7 +56,7 @@ const GreetingModal: React.FC<{ onClose: () => void, onSignInClick: () => void }
 // Main wrapper component
 const LoginPrompt: React.FC<LoginPromptProps> = ({ 
   type = 'modal', 
-  showDelay = 4000,
+  showDelay = 7000,
   dismissDuration = 1 // Default to 1 day
 }) => {
   const { user } = useAuth();
@@ -95,7 +95,7 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({
     // Only set timer if user is not authenticated and hasn't dismissed recently
     if (!user && !checkDismissed()) {
       // For mobile, use a shorter delay to ensure it triggers before any potential issues
-      const delay = isMobile ? Math.min(1000, showDelay) : showDelay;
+      const delay = isMobile ? Math.min(6000, showDelay) : showDelay;
       
       console.log("Setting timeout to show greeting prompt...");
       const timer = setTimeout(() => {
@@ -147,8 +147,6 @@ const LoginPrompt: React.FC<LoginPromptProps> = ({
     return null;
   }
   
-  // For testing purposes - uncomment this line to force the modal to show
-  // if (!showGreetingPrompt && !showAuthModal) setShowGreetingPrompt(true);
   
   return (
     <>
