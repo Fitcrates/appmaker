@@ -322,7 +322,7 @@ const GenrePage: React.FC = () => {
       <main className="container mx-auto mb-8 ">
         <div className="space-y-8">
           {/* Header section */}
-          <div className="text-center mt-24">
+          <div id="exploreAnime" className="text-center mt-24">
             <h1 className="text-4xl bg-clip-text text-[#ff13f0] drop-shadow-[0_0_8px_#ff13f0] tilt-neon">Anime Search</h1>
             <p className="mt-6  bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon4  leading-tight">
               Search and filter through thousands of anime titles
@@ -330,7 +330,7 @@ const GenrePage: React.FC = () => {
           </div>
 {/* Filters Section  */}
 <section 
-  id="exploreAnime" 
+  
   className="my-8 scroll-mt-24"
 >
   <div className="max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8">
