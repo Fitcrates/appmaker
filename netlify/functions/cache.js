@@ -2,11 +2,13 @@ const axios = require('axios');
 
 // Cache configuration
 const CACHE = new Map();
-const MAX_CACHE_SIZE = 100;
+const MAX_CACHE_SIZE = 500; // Increased for better hit rate
+const BATCH_SIZE = 3; // Number of concurrent requests
 
 // Cache durations in milliseconds
 const CACHE_DURATIONS = {
   ANIME_DETAILS: 24 * 60 * 60 * 1000,  // 24 hours for anime details
+  RELATED_DATA: 12 * 60 * 60 * 1000,   // 12 hours for reviews, recommendations, etc.
   TOP_ANIME: 6 * 60 * 60 * 1000,       // 6 hours for top anime
   SCHEDULES: 15 * 60 * 1000,           // 15 minutes for schedules
   SEASONS: 3 * 60 * 60 * 1000,         // 3 hours for seasons
@@ -16,9 +18,11 @@ const CACHE_DURATIONS = {
 
 // Rate limiting configuration
 const RATE_LIMIT = {
-  delay: 1000,                         // 1 second between requests
+  delay: 50,                          // 50ms between requests in a batch
+  batchDelay: 1000,                   // 1 second between batches
   lastRequest: 0,
-  retryDelay: 2000                     // 2 seconds retry delay for 429 errors
+  lastBatch: 0,
+  retryDelay: 2000                    // 2 seconds retry delay for 429 errors
 };
 
 // Helper function for controlled delays
@@ -38,7 +42,12 @@ const cleanCache = () => {
 // Get cache duration based on endpoint
 const getCacheDuration = (endpoint) => {
   if (endpoint.startsWith('/anime/') && !endpoint.includes('random')) {
-    return CACHE_DURATIONS.ANIME_DETAILS;
+    // Higher cache duration for anime details
+    if (endpoint.split('/').length === 3) {
+      return CACHE_DURATIONS.ANIME_DETAILS;
+    }
+    // Related data (reviews, recommendations, etc.)
+    return CACHE_DURATIONS.RELATED_DATA;
   }
   if (endpoint.startsWith('/top/anime')) {
     return CACHE_DURATIONS.TOP_ANIME;
@@ -72,13 +81,21 @@ const generateCacheKey = (endpoint, params = {}) => {
   return sortedParams ? `${endpoint}?${sortedParams}` : endpoint;
 };
 
-// Fetch data with rate limiting and retries
+// Fetch data with optimized rate limiting
 const fetchWithRateLimit = async (url, params = {}) => {
   const now = Date.now();
-  const timeToWait = Math.max(0, RATE_LIMIT.lastRequest + RATE_LIMIT.delay - now);
+  const timeSinceLastBatch = now - RATE_LIMIT.lastBatch;
+  const timeSinceLastRequest = now - RATE_LIMIT.lastRequest;
 
-  if (timeToWait > 0) {
-    await delay(timeToWait);
+  // Check if we need to wait for the batch delay
+  if (timeSinceLastBatch < RATE_LIMIT.batchDelay) {
+    await delay(RATE_LIMIT.batchDelay - timeSinceLastBatch);
+    RATE_LIMIT.lastBatch = Date.now();
+  }
+
+  // Check if we need to wait for the request delay
+  if (timeSinceLastRequest < RATE_LIMIT.delay) {
+    await delay(RATE_LIMIT.delay - timeSinceLastRequest);
   }
 
   try {
@@ -88,7 +105,8 @@ const fetchWithRateLimit = async (url, params = {}) => {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: 5000 // 5 second timeout
     });
     return response;
   } catch (error) {
@@ -110,13 +128,11 @@ const fetchFromAPI = async (endpoint, params = {}) => {
     const cacheDuration = getCacheDuration(endpoint);
     
     if (cached && Date.now() - cached.timestamp < cacheDuration) {
-      console.log(`Cache hit for ${cacheKey}`);
       return cached.data;
     }
   }
 
   // Fetch fresh data
-  console.log(`Cache miss for ${endpoint}, fetching fresh data`);
   const response = await fetchWithRateLimit(`https://api.jikan.moe/v4${endpoint}`, params);
 
   // Cache the response if applicable
@@ -131,7 +147,7 @@ const fetchFromAPI = async (endpoint, params = {}) => {
   return response.data;
 };
 
-// Lambda handler
+// Lambda handler with optimized response
 exports.handler = async (event) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -158,11 +174,16 @@ exports.handler = async (event) => {
 
     const data = await fetchFromAPI(endpoint, queryParams);
 
+    // Set appropriate cache control headers
+    const cacheDuration = Math.floor(getCacheDuration(endpoint) / 1000);
+    
     return {
       statusCode: 200,
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Cache-Control': `public, max-age=${cacheDuration}`,
+        'Vary': 'Accept-Encoding'
       },
       body: JSON.stringify(data)
     };
@@ -173,7 +194,8 @@ exports.handler = async (event) => {
       statusCode: error.response?.status || 500,
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store'
       },
       body: JSON.stringify({
         error: error.message || 'Internal server error'
