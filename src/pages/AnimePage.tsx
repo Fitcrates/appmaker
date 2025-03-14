@@ -442,6 +442,8 @@ export function AnimePage() {
                       src={anime.images.jpg.large_image_url || anime.images.jpg.image_url}
                       alt={anime.title}
                       className="w-full rounded-lg shadow-lg text-white"
+                      fetchPriority="high"
+                      loading="eager"
                     />
                     <div className="mt-4 space-y-2">
                       {anime.score && (
