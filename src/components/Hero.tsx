@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowDown } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { HashLink } from 'react-router-hash-link';
 import '../index.css';
 
 const Hero = () => {
@@ -9,19 +8,28 @@ const Hero = () => {
   const videoPath = "/media/ParalaxAnime.mp4";
   const placeholderPath = "/media/PlaceholderVid.webp";
   
-  // Preload the video
+  // Preload assets
   useEffect(() => {
-    const preloadLink = document.createElement('link');
-    preloadLink.rel = 'preload';
-    preloadLink.as = 'fetch';
-    preloadLink.href = videoPath;
-    document.head.appendChild(preloadLink);
+    // Preload video
+    const preloadVideo = document.createElement('link');
+    preloadVideo.rel = 'preload';
+    preloadVideo.as = 'video';
+    preloadVideo.href = videoPath;
+    preloadVideo.type = 'video/mp4';
+    document.head.appendChild(preloadVideo);
+
+    // Preload placeholder image
+    const preloadImage = document.createElement('link');
+    preloadImage.rel = 'preload';
+    preloadImage.as = 'image';
+    preloadImage.href = placeholderPath;
+    preloadImage.type = 'image/webp';
+    document.head.appendChild(preloadImage);
     
     // Clean up
     return () => {
-      if (document.head.contains(preloadLink)) {
-        document.head.removeChild(preloadLink);
-      }
+      document.head.removeChild(preloadVideo);
+      document.head.removeChild(preloadImage);
     };
   }, []);
 
@@ -30,14 +38,12 @@ const Hero = () => {
     const videoElement = videoRef.current;
     if (!videoElement) return;
 
-    // Monitor and restart video if paused unexpectedly
     const checkPlayback = () => {
       if (videoElement.paused && isVideoLoaded) {
         videoElement.play().catch(err => console.log('Auto-play failed:', err));
       }
     };
 
-    // Set up event listeners for potential playback interruptions
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         checkPlayback();
@@ -45,23 +51,18 @@ const Hero = () => {
     };
 
     const handleResize = () => {
-      // Debounce the resize event to prevent excessive checks
       clearTimeout(window.resizeTimer);
       window.resizeTimer = setTimeout(checkPlayback, 200);
     };
 
     const handleFocus = () => checkPlayback();
-
-    // Check periodically if video is playing
     const playbackInterval = setInterval(checkPlayback, 5000);
 
-    // Add all event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('resize', handleResize);
     window.addEventListener('focus', handleFocus);
     videoElement.addEventListener('pause', checkPlayback);
     
-    // Clean up event listeners
     return () => {
       clearInterval(playbackInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -73,38 +74,33 @@ const Hero = () => {
     };
   }, [isVideoLoaded]);
 
-  // Handle initial load and play
   const handleVideoLoaded = () => {
     const video = videoRef.current;
     if (video) {
-      // Ensure video plays after loading
       video.play()
-        .then(() => {
-          setIsVideoLoaded(true);
-        })
-        .catch(err => {
-          console.log('Initial play failed:', err);
-          // Still mark as loaded, just without autoplay
-          setIsVideoLoaded(true);
-        });
+        .then(() => setIsVideoLoaded(true))
+        .catch(() => setIsVideoLoaded(true));
     }
   };
 
   return (
     <div className="relative w-full">
-      {/* Hero Section */}
       <section className="relative w-full h-screen">
-        {/* Background Container */}
         <div className="absolute inset-0 w-full h-full overflow-hidden bg-black">
-          {/* WebP Placeholder Image */}
+          {/* Optimized WebP Placeholder */}
           <img
             src={placeholderPath}
             alt="Video placeholder"
             className="absolute top-0 left-0 w-full h-full object-cover object-[80%_100%]"
             style={{ display: isVideoLoaded ? 'none' : 'block' }}
+            width="1920"
+            height="1080"
+            loading="eager"
+            decoding="sync"
+            fetchPriority="high"
           />
           
-          {/* Video that replaces the placeholder when loaded */}
+          {/* Optimized Video */}
           <video
             ref={videoRef}
             className={`absolute top-0 left-0 w-full h-full object-cover object-[80%_100%] transition-opacity duration-500 ${
@@ -119,48 +115,32 @@ const Hero = () => {
             onCanPlay={handleVideoLoaded}
           />
           
-          {/* Overlay */}
-          <div className="absolute inset-0 bg-black/40  border-b border-b-[#4ef1d6] " />
+          <div className="absolute inset-0 bg-black/40 border-b border-b-[#4ef1d6]" />
         </div>
 
-        {/* Hero Content */}
-        <div className="relative h-full max-w-[100rem] mx-auto  px-4 sm:px-6 lg:px-8 flex items-end pb-20 z-10">
-          <div className="w-full flex flex-col  justify-between items-center lg:items-start">
-            {/* Text + Arrow Container */}
-            <div className="flex flex-col  items-center text-center lg:text-left lg:items-start space-y-8 lg:space-y-4 ">
+        <div className="relative h-full max-w-[100rem] mx-auto px-4 sm:px-6 lg:px-8 flex items-end pb-20 z-10">
+          <div className="w-full flex flex-col justify-between items-center lg:items-start">
+            <div className="flex flex-col items-center text-center lg:text-left lg:items-start space-y-8 lg:space-y-4">
               <div>
-                <motion.h1
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="tilt-neon5 bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] leading-[1]"
-                >
+                <h1 className="tilt-neon5 bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] leading-[1] text-4xl md:text-5xl lg:text-6xl font-bold">
                   Discover Anime
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  className="tilt-neon2 text-white"
-                >
+                </h1>
+                <p className="tilt-neon2 text-white text-lg md:text-xl mt-4">
                   Explore your favorite genres and find new series to watch
-                </motion.p>
+                </p>
               </div>
 
-              {/* Scroll Arrow */}
-              <motion.button
-                onClick={() => {
-                  document.getElementById('explorePointer')?.scrollIntoView({ behavior: 'smooth' });
+              <HashLink 
+                to="/genres#exploreAnime" 
+                className="flex flex-col md:flex-row gap-2 px-8 py-3 cyberpunk-neon-btn text-white -mt-8 md:mt-0"
+                scroll={(el) => {
+                  setTimeout(() => {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 100);
                 }}
-                whileHover={{ scale: 1.1 }}
-                className="items-start"
-                aria-label="Scroll to content"
               >
-                <div className="cyberpunk-neon-btn ">
-                <span>View</span>
-                <ArrowDown className="w-4 h-4 lg:w-6 lg:h-6" />
-                </div>
-              </motion.button>
+                <span>Search</span>
+              </HashLink>
             </div>
           </div>
         </div>
