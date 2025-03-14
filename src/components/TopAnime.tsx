@@ -99,14 +99,14 @@ export function TopAnime({ animeData, pagination, currentPage, onPageChange, isL
   return (
     <div id="topAnime" className=" max-w-[100rem] space-y-6 mx-auto px-2 sm:px-6 lg:px-8">
       <div className="flex  justify-between items-center mb-12">
-        <h2 className="text-3xl font-bold text-[#F2F5F7] tracking-tight mt-24">
+        <h2 className="text-3xl font-bold text-[#F2F5F7] tracking-tight mt-0">
           <span className="bg-clip-text text-[#4ef1d6] drop-shadow-[0_0_8px_#4ef1d6] tilt-neon ">
             Top Anime
           </span>
         </h2>
 
 
-        <div className="relative mt-24  flex items-center ">
+        <div className="relative mt-0  flex items-center ">
           <span className="bg-clip-text text-[#ff13f0] drop-shadow-[0_2px_12px_#ff13f0] tilt-neon2 px-4 py-2">
           Page <span className="notranslate">{currentPage}</span> of <span className="notranslate">{pagination?.last_visible_page || 1}</span>
           </span>
