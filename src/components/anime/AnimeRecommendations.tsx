@@ -28,7 +28,7 @@ export const AnimeRecommendations: React.FC<AnimeRecommendationsProps> = ({
   isLoading = false, 
   hasLoaded = false,
   currentPage = 1,
-  itemsPerPage = 10,
+  itemsPerPage = 12,
   onPageChange = () => {}
 }) => {
   if (isLoading) {
@@ -79,17 +79,23 @@ export const AnimeRecommendations: React.FC<AnimeRecommendationsProps> = ({
   }
 
   // Calculate pagination
-  const totalPages = Math.ceil(recommendations.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(recommendations.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, recommendations.length);
   const currentRecommendations = recommendations.slice(startIndex, endIndex);
 
-  return (
-    <div className="mt-8">
-      <h2 className="bg-clip-text text-[#ff13f0] drop-shadow-[0_0_8px_#ff13f0] tilt-neon mb-4 break-words">
-  Recommenda&shy;tions
-</h2>
+  const handlePageChange = (newPage: number) => {
+    // Scroll to recommendations section with smooth behavior
+    const recommendationsSection = document.getElementById('recommendations');
+    if (recommendationsSection) {
+      recommendationsSection.scrollIntoView({ behavior: 'smooth' });
+    }
+    onPageChange(newPage);
+  };
 
+  return (
+    <div id="recommendations" className="mt-8">
+      <h2 className="bg-clip-text text-[#ff13f0] drop-shadow-[0_0_8px_#ff13f0] tilt-neon mb-4">Recommendations</h2>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {currentRecommendations.map((recommendation) => (
@@ -112,15 +118,15 @@ export const AnimeRecommendations: React.FC<AnimeRecommendationsProps> = ({
       </div>
       
       {/* Pagination controls */}
-      {totalPages > 1 && (
+      <div className="flex justify-center mt-6">
         <Pagination 
           currentPage={currentPage}
           totalPages={totalPages}
-          onPageChange={onPageChange}
+          onPageChange={handlePageChange}
           isLoading={isLoading}
           className="mt-6"
         />
-      )}
+      </div>
     </div>
   );
 };
