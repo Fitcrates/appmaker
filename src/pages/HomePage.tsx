@@ -156,7 +156,7 @@ function HomePage() {
       <Hero />
       
       <div className="relative backgroundMain">
-      <ExplorePointer />
+      
         <TopAnime 
           animeData={topAnime}
           pagination={topPagination}
