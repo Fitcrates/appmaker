@@ -1,0 +1,102 @@
+/* 
+ * Language and translation utility styles
+ * This file contains CSS for language direction and translation fixes
+ */
+
+/* Prevent translation of numeric values */
+.notranslate,
+[class*="score"],
+[class*="rating"],
+[class*="count"],
+[class*="number"],
+[class*="page"],
+[class*="total"],
+[class*="episodes"],
+[class*="year"] {
+  unicode-bidi: isolate;
+}
+
+/* Language-specific classes for targeting in CSS */
+body.lang-en,
+body.lang-fr,
+body.lang-de,
+body.lang-es,
+body.lang-it,
+body.lang-pt,
+body.lang-ru,
+body.lang-ja,
+body.lang-ko,
+body.lang-zh,
+body.lang-ar,
+body.lang-he {
+  /* Language-specific styles can be added here */
+}
+
+/* Language selector dropdown styles */
+.language-selector {
+  position: relative;
+  display: inline-block;
+}
+
+.language-selector-button {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: white;
+  font-size: 0.875rem;
+  transition: color 0.2s;
+}
+
+.language-selector-button:hover {
+  color: #4ef1d6;
+}
+
+.language-selector-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  min-width: 12rem;
+  padding: 0.5rem 0;
+  margin-top: 0.25rem;
+  background-color: #1a1a2e;
+  border: 1px solid #2a2a42;
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  text-align: left;
+  font-size: 0.875rem;
+  color: white;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.language-option:hover {
+  background-color: #2a2a42;
+}
+
+.language-option.active {
+  background-color: #4ef1d6;
+  color: #1a1a2e;
+}
+
+/* RTL language support */
+html[dir="rtl"] .language-selector-dropdown {
+  left: auto;
+  right: 0;
+}
+
+html[dir="rtl"] .language-option {
+  text-align: right;
+}
