@@ -1,42 +1,89 @@
 const axios = require('axios');
 
-// Separate caches for different endpoints
-const cache = {
-  topAnime: { data: null, lastUpdated: 0 },
-  topMovies: { data: null, lastUpdated: 0 },
-  currentSeason: { data: null, lastUpdated: 0 },
-  schedules: {}, // Will store different days as keys
-  anime: {}, // Will store different parameter combinations as keys
-  lastApiCall: 0
-};
+// Cache configuration
+const CACHE = new Map();
+const MAX_CACHE_SIZE = 100;
 
-// Cache durations for different endpoints
+// Cache durations in milliseconds
 const CACHE_DURATIONS = {
-  '/top/anime': 6 * 60 * 60 * 1000, // 6 hours for top anime
-  '/top/anime/movie': 12 * 60 * 60 * 1000, // 12 hours for top movies
-  '/seasons/now': 3 * 60 * 60 * 1000, // 3 hours for current season
-  '/schedules': 30 * 60 * 1000, // 30 minutes for schedules
-  '/anime': 6 * 60 * 60 * 1000 // 6 hours for general anime listings
+  ANIME_DETAILS: 24 * 60 * 60 * 1000,  // 24 hours for anime details
+  TOP_ANIME: 6 * 60 * 60 * 1000,       // 6 hours for top anime
+  SCHEDULES: 15 * 60 * 1000,           // 15 minutes for schedules
+  SEASONS: 3 * 60 * 60 * 1000,         // 3 hours for seasons
+  RANDOM: 0,                           // No cache for random
+  DEFAULT: 5 * 60 * 1000               // 5 minutes default
 };
 
-const API_RATE_LIMIT = 1000; // 1 second between API calls
+// Rate limiting configuration
+const RATE_LIMIT = {
+  delay: 1000,                         // 1 second between requests
+  lastRequest: 0,
+  retryDelay: 2000                     // 2 seconds retry delay for 429 errors
+};
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// Helper function for controlled delays
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-const fetchWithRateLimit = async (url, params = {}) => {
-  const now = Date.now();
-  const timeToWait = Math.max(0, cache.lastApiCall + API_RATE_LIMIT - now);
+// Clean old cache entries and ensure size limit
+const cleanCache = () => {
+  if (CACHE.size <= MAX_CACHE_SIZE) return;
+
+  const entries = Array.from(CACHE.entries());
+  entries.sort(([, a], [, b]) => b.timestamp - a.timestamp);
   
-  if (timeToWait > 0) {
-    console.log(`Rate limit hit, waiting ${timeToWait}ms before next request`);
-    await sleep(timeToWait);
+  // Remove oldest entries to reduce cache to half size
+  entries.slice(MAX_CACHE_SIZE / 2).forEach(([key]) => CACHE.delete(key));
+};
+
+// Get cache duration based on endpoint
+const getCacheDuration = (endpoint) => {
+  if (endpoint.startsWith('/anime/') && !endpoint.includes('random')) {
+    return CACHE_DURATIONS.ANIME_DETAILS;
+  }
+  if (endpoint.startsWith('/top/anime')) {
+    return CACHE_DURATIONS.TOP_ANIME;
+  }
+  if (endpoint.startsWith('/schedules')) {
+    return CACHE_DURATIONS.SCHEDULES;
+  }
+  if (endpoint.startsWith('/seasons')) {
+    return CACHE_DURATIONS.SEASONS;
+  }
+  if (endpoint.includes('random')) {
+    return CACHE_DURATIONS.RANDOM;
+  }
+  return CACHE_DURATIONS.DEFAULT;
+};
+
+// Generate cache key from endpoint and parameters
+const generateCacheKey = (endpoint, params = {}) => {
+  // Skip caching for specific cases
+  if (params.bypass_cache === 'true' || params.q || endpoint.includes('random')) {
+    return null;
   }
 
-  cache.lastApiCall = Date.now();
-  console.log(`Fetching from API: ${url}`);
-  
+  // Create a deterministic cache key
+  const sortedParams = Object.entries(params)
+    .filter(([key]) => !['bypass_cache', 'q'].includes(key))
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('&');
+
+  return sortedParams ? `${endpoint}?${sortedParams}` : endpoint;
+};
+
+// Fetch data with rate limiting and retries
+const fetchWithRateLimit = async (url, params = {}) => {
+  const now = Date.now();
+  const timeToWait = Math.max(0, RATE_LIMIT.lastRequest + RATE_LIMIT.delay - now);
+
+  if (timeToWait > 0) {
+    await delay(timeToWait);
+  }
+
   try {
-    const response = await axios.get(url, { 
+    RATE_LIMIT.lastRequest = Date.now();
+    const response = await axios.get(url, {
       params,
       headers: {
         'Accept': 'application/json',
@@ -46,147 +93,53 @@ const fetchWithRateLimit = async (url, params = {}) => {
     return response;
   } catch (error) {
     if (error.response?.status === 429) {
-      console.log('Rate limit exceeded, retrying after delay');
-      await sleep(2000); // Wait 2 seconds before retry
+      await delay(RATE_LIMIT.retryDelay);
       return fetchWithRateLimit(url, params);
     }
     throw error;
   }
 };
 
-// Get cache key based on endpoint and parameters
-const getCacheKey = (endpoint, params = {}) => {
-  // Skip caching if bypass_cache is true
-  if (params.bypass_cache === 'true') {
-    return null;
-  }
+// Main fetch function with caching
+const fetchFromAPI = async (endpoint, params = {}) => {
+  const cacheKey = generateCacheKey(endpoint, params);
   
-  // Special case for top movies
-  if (endpoint === '/top/anime' && params.type === 'movie') {
-    return '/top/anime/movie';
-  }
-  
-  // Special case for schedules with different days
-  if (endpoint === '/schedules' && params.filter) {
-    return `${endpoint}/${params.filter}`;
-  }
-  
-  // Special case for anime with specific parameters
-  if (endpoint === '/anime') {
-    // If there's a search query or specific filters, don't cache
-    if (params.q || params.bypass_cache) {
-      return null; // Skip caching for search queries
-    }
+  // Return cached data if valid
+  if (cacheKey) {
+    const cached = CACHE.get(cacheKey);
+    const cacheDuration = getCacheDuration(endpoint);
     
-    // Create a cache key based on common filter parameters
-    const filterParams = [];
-    if (params.order_by) filterParams.push(`order_by=${params.order_by}`);
-    if (params.sort) filterParams.push(`sort=${params.sort}`);
-    if (params.sfw) filterParams.push('sfw=true');
-    if (params.type) filterParams.push(`type=${params.type}`);
-    
-    if (filterParams.length > 0) {
-      return `${endpoint}?${filterParams.join('&')}`;
+    if (cached && Date.now() - cached.timestamp < cacheDuration) {
+      console.log(`Cache hit for ${cacheKey}`);
+      return cached.data;
     }
-  }
-  
-  return endpoint;
-};
-
-// Get cache duration based on endpoint
-const getCacheDuration = (endpoint) => {
-  if (endpoint.startsWith('/top/anime')) {
-    if (endpoint.includes('movie')) {
-      return CACHE_DURATIONS['/top/anime/movie'];
-    }
-    return CACHE_DURATIONS['/top/anime'];
-  }
-  if (endpoint.startsWith('/seasons/now')) {
-    return CACHE_DURATIONS['/seasons/now'];
-  }
-  if (endpoint.startsWith('/schedules')) {
-    return CACHE_DURATIONS['/schedules'];
-  }
-  if (endpoint.startsWith('/anime')) {
-    return CACHE_DURATIONS['/anime'];
-  }
-  return CACHE_DURATIONS['/top/anime']; // Default
-};
-
-const fetchEndpoint = async (endpoint, params = {}) => {
-  const cacheKey = getCacheKey(endpoint, params);
-  
-  if (cacheKey === null) {
-    console.log(`Cache miss for ${endpoint}, fetching fresh data`);
-    const response = await fetchWithRateLimit(`https://api.jikan.moe/v4${endpoint}`, params);
-    return response.data;
   }
 
-  const now = Date.now();
-  const cacheDuration = getCacheDuration(endpoint);
-  
-  // Check if we have a valid cache entry
-  if (cacheKey.startsWith('/schedules/')) {
-    const day = cacheKey.split('/')[2];
-    if (cache.schedules[day]?.data && cache.schedules[day].lastUpdated + cacheDuration > now) {
-      console.log(`Cache hit for ${cacheKey}`);
-      return cache.schedules[day].data;
-    }
-  } else if (cacheKey.startsWith('/anime?')) {
-    const cacheKeySimple = cacheKey.replace('/anime?', '');
-    if (cache.anime[cacheKeySimple]?.data && cache.anime[cacheKeySimple].lastUpdated + cacheDuration > now) {
-      console.log(`Cache hit for ${cacheKey}`);
-      return cache.anime[cacheKeySimple].data;
-    }
-  } else if (cacheKey === '/top/anime') {
-    if (cache.topAnime?.data && cache.topAnime.lastUpdated + cacheDuration > now) {
-      console.log(`Cache hit for ${cacheKey}`);
-      return cache.topAnime.data;
-    }
-  } else if (cacheKey === '/top/anime/movie') {
-    if (cache.topMovies?.data && cache.topMovies.lastUpdated + cacheDuration > now) {
-      console.log(`Cache hit for ${cacheKey}`);
-      return cache.topMovies.data;
-    }
-  } else if (cacheKey === '/seasons/now') {
-    if (cache.currentSeason?.data && cache.currentSeason.lastUpdated + cacheDuration > now) {
-      console.log(`Cache hit for ${cacheKey}`);
-      return cache.currentSeason.data;
-    }
-  }
-  
-  // If we get here, we need to fetch fresh data
-  console.log(`Cache miss for ${cacheKey}, fetching fresh data`);
+  // Fetch fresh data
+  console.log(`Cache miss for ${endpoint}, fetching fresh data`);
   const response = await fetchWithRateLimit(`https://api.jikan.moe/v4${endpoint}`, params);
-  
-  // Store in cache
-  if (cacheKey.startsWith('/schedules/')) {
-    const day = cacheKey.split('/')[2];
-    cache.schedules[day] = { data: response.data, lastUpdated: now };
-  } else if (cacheKey.startsWith('/anime?')) {
-    const cacheKeySimple = cacheKey.replace('/anime?', '');
-    cache.anime[cacheKeySimple] = { data: response.data, lastUpdated: now };
-  } else if (cacheKey === '/top/anime') {
-    cache.topAnime = { data: response.data, lastUpdated: now };
-  } else if (cacheKey === '/top/anime/movie') {
-    cache.topMovies = { data: response.data, lastUpdated: now };
-  } else if (cacheKey === '/seasons/now') {
-    cache.currentSeason = { data: response.data, lastUpdated: now };
+
+  // Cache the response if applicable
+  if (cacheKey) {
+    CACHE.set(cacheKey, {
+      data: response.data,
+      timestamp: Date.now()
+    });
+    cleanCache();
   }
-  
+
   return response.data;
 };
 
+// Lambda handler
 exports.handler = async (event) => {
-  console.log('Cache function called with params:', event.queryStringParameters);
-  
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, OPTIONS'
   };
 
-  // Handle OPTIONS request
+  // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 204,
@@ -196,45 +149,34 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { endpoint, page = '1', limit = '10', filter, type, sfw, bypass_cache } = event.queryStringParameters || {};
-    
+    const params = event.queryStringParameters || {};
+    const { endpoint, ...queryParams } = params;
+
     if (!endpoint) {
-      return {
-        statusCode: 400,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        body: JSON.stringify({ error: 'Endpoint parameter is required' })
-      };
+      throw new Error('Endpoint parameter is required');
     }
 
-    const params = { page, limit };
-    if (filter) params.filter = filter;
-    if (type) params.type = type;
-    if (sfw) params.sfw = sfw;
-    if (bypass_cache) params.bypass_cache = bypass_cache;
-
-    const data = await fetchEndpoint(endpoint, params);
+    const data = await fetchFromAPI(endpoint, queryParams);
 
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=3600',
-        ...corsHeaders
+        ...corsHeaders,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(data)
     };
   } catch (error) {
     console.error('Error in cache function:', error);
+
     return {
-      statusCode: 500,
+      statusCode: error.response?.status || 500,
       headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders
+        ...corsHeaders,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        error: 'Failed to fetch data',
-        details: error.message,
-        stack: error.stack
+        error: error.message || 'Internal server error'
       })
     };
   }
