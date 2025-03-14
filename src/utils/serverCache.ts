@@ -1,9 +1,6 @@
-
-
 import { RequestPriority } from './api';
 
 const NETLIFY_CACHE_URL = '/.netlify/functions/cache';
-
 
 export const fetchFromServerCache = async <T>(
   endpoint: string,
@@ -41,7 +38,12 @@ export const CACHEABLE_ENDPOINTS = [
   '/top/anime',
   '/seasons/now',
   '/schedules',
-  '/anime'  
+  '/anime',
+  '/anime/',  // Add this to catch all anime-related endpoints
+  '/characters',
+  '/episodes',
+  '/recommendations',
+  '/reviews'
 ];
 
 /**
@@ -50,19 +52,21 @@ export const CACHEABLE_ENDPOINTS = [
 export const shouldUseServerCache = (endpoint: string, params?: Record<string, string | number | boolean>): boolean => {
   // Skip cache if bypass_cache is true
   if (params && params.bypass_cache) {
-    console.log('Bypassing server cache due to bypass_cache parameter');
     return false;
   }
   
   // Skip cache for search queries
   if (params && 'q' in params) {
-    console.log('Bypassing server cache due to search query');
     return false;
   }
   
-  // Skip cache for pagination beyond page 1
+  // Allow caching for all pages of anime details and related data
+  if (endpoint.startsWith('/anime/') && !endpoint.includes('random')) {
+    return true;
+  }
+  
+  // For other endpoints, skip cache for pagination beyond page 1
   if (params && params.page && Number(params.page) > 1) {
-    console.log('Bypassing server cache for pagination beyond page 1');
     return false;
   }
   
