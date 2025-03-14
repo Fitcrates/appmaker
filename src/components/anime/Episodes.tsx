@@ -102,84 +102,94 @@ export const Episodes: React.FC<EpisodesProps> = ({
         <div className="text-red-500">{error}</div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {isLoading ? (
-              // Loading skeleton
-              [...Array(10)].map((_, index) => (
-                <div
-                  key={index}
-                  className="relative p-4 bg-black/20 rounded-lg shadow ring-1 ring-white/20 flex flex-col min-h-[150px] animate-pulse"
-                >
-                  <div className="flex-grow">
-                    <div className="h-6 black/20 rounded w-3/4 mb-2"></div>
-                    <div className="h-4 black/20 rounded w-1/2 mt-2"></div>
-                    <div className="h-4 black/20 rounded w-1/3 mt-2"></div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <div className="h-6 black/20 rounded w-20"></div>
-                    <div className="h-6 black/20 rounded w-16"></div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              currentPageEpisodes.map((episode) => (
-                <div
-                  key={episode.mal_id}
-                  className="relative p-4 bg-black/20 rounded-lg shadow hover:ring-1 hover:ring-[#ff13f0]/50 transition-all duration-300 ring-1 ring-white/20 flex flex-col min-h-[150px]"
-                  onClick={() => handleEpisodeClick(episode)}
-                >
-                  <div className="flex-grow">
-                    <h3 className="font-medium text-white">Episode <span className="notranslate">{episode.mal_id}</span>: {episode.title}</h3>
-                    {episode.title_japanese && (
-                      <p className="text-sm text-white/80 mt-2">{episode.title_japanese}</p>
-                    )}
-                    {episode.aired && (
-                      <p className="text-sm text-white/50 mt-2">
-                        Aired: {new Date(episode.aired).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                  
-                  {/* Badge container at bottom with consistent positioning */}
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent card click from triggering
-                        handleEpisodeClick(episode);
-                      }}
-                      className="px-2 py-1 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
+          {!isLoading && allEpisodeData.length === 0 ? (
+            <div className="text-center p-8 ">
+              <p className="text-white/80 text-base">No episode data available</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                {isLoading ? (
+                  // Loading skeleton
+                  [...Array(10)].map((_, index) => (
+                    <div
+                      key={index}
+                      className="relative p-4 bg-black/20 rounded-lg shadow ring-1 ring-white/20 flex flex-col min-h-[150px] animate-pulse"
                     >
-                      View Details
-                    </button>
-                    
-                    {episode.filler && (
-                      <span className="px-2 py-1 text-xs bg-[#eafc49] drop-shadow-[0_0_4px_#eafc49] text-black rounded-lg">
-                        Filler
-                      </span>
-                    )}
-                    {episode.recap && (
-                      <span className="px-2 py-1 text-xs bg-[#41f0e1] drop-shadow-[0_0_4px_#41f0e1] text-black rounded-lg">
-                        Recap
-                      </span>
-                    )}
-                    {episode.score !== undefined && (
-                      <span className="px-2 py-1 text-xs bg-[#45f745] drop-shadow-[0_0_4px_#45f745] text-black rounded-lg">
-                        Score: <span className="notranslate">{episode.score}</span>
-                      </span>
-                    )}
-                  </div>
+                      <div className="flex-grow">
+                        <div className="h-6 black/20 rounded w-3/4 mb-2"></div>
+                        <div className="h-4 black/20 rounded w-1/2 mt-2"></div>
+                        <div className="h-4 black/20 rounded w-1/3 mt-2"></div>
+                      </div>
+                      <div className="mt-4 flex gap-2">
+                        <div className="h-6 black/20 rounded w-20"></div>
+                        <div className="h-6 black/20 rounded w-16"></div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  currentPageEpisodes.map((episode) => (
+                    <div
+                      key={episode.mal_id}
+                      className="relative p-4 bg-black/20 rounded-lg shadow hover:ring-1 hover:ring-[#ff13f0]/50 transition-all duration-300 ring-1 ring-white/20 flex flex-col min-h-[150px]"
+                      onClick={() => handleEpisodeClick(episode)}
+                    >
+                      <div className="flex-grow">
+                        <h3 className="font-medium text-white">Episode <span className="notranslate">{episode.mal_id}</span>: {episode.title}</h3>
+                        {episode.title_japanese && (
+                          <p className="text-sm text-white/80 mt-2">{episode.title_japanese}</p>
+                        )}
+                        {episode.aired && (
+                          <p className="text-sm text-white/50 mt-2">
+                            Aired: {new Date(episode.aired).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Badge container at bottom with consistent positioning */}
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent card click from triggering
+                            handleEpisodeClick(episode);
+                          }}
+                          className="px-2 py-1 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
+                        >
+                          View Details
+                        </button>
+                        
+                        {episode.filler && (
+                          <span className="px-2 py-1 text-xs bg-[#eafc49] drop-shadow-[0_0_4px_#eafc49] text-black rounded-lg">
+                            Filler
+                          </span>
+                        )}
+                        {episode.recap && (
+                          <span className="px-2 py-1 text-xs bg-[#41f0e1] drop-shadow-[0_0_4px_#41f0e1] text-black rounded-lg">
+                            Recap
+                          </span>
+                        )}
+                        {episode.score !== undefined && (
+                          <span className="px-2 py-1 text-xs bg-[#45f745] drop-shadow-[0_0_4px_#45f745] text-black rounded-lg">
+                            Score: <span className="notranslate">{episode.score}</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              {allEpisodeData.length > 0 && (
+                <div className="flex justify-center mt-6">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                    isLoading={isLoading}
+                  />
                 </div>
-              ))
-            )}
-          </div>
-          <div className="flex justify-center mt-6">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-              isLoading={isLoading}
-            />
-          </div>
+              )}
+            </>
+          )}
         </>
       )}
 
