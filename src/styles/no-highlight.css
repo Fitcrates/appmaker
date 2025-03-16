@@ -1,0 +1,38 @@
+/* CSS to selectively disable Google Translate hover highlights */
+
+/* Target only Google Translate highlight classes */
+.goog-text-highlight {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  text-decoration: none !important;
+}
+
+/* Target specific Google Translate highlight classes */
+.VIpgJd-yAWNEb-VIpgJd-fmcmS-sn54Q {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-bottom: none !important;
+  border: none !important;
+}
+
+/* Hide Google feedback window */
+.VIpgJd-yAWNEb-hvhgNd {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Fix for mobile translation issues */
+body.translated-ltr,
+body.translated-rtl {
+  top: 0 !important;
+  position: static !important;
+}
+
+/* Ensure translated content displays correctly */
+.translated-ltr,
+.translated-rtl {
+  margin-top: 0 !important;
+}
