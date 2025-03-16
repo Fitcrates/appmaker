@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="description" content="AnimeVersum - Discover anime, explore your favorite genres, and find new series to watch. Your ultimate anime discovery platform.">
+    <meta name="keywords" content="anime, anime series, anime discovery, anime genres, watch anime, anime recommendations">
+    <meta name="author" content="AnimeVersum">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="AnimeVersum - Discover Your Next Favorite Anime">
+    <meta property="og:description" content="Discover anime, explore genres, and find your next binge-worthy anime series on AnimeVersum.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://animeversum.netlify.app/">
+    <meta property="og:image" content="https://animeversum.netlify.app/src/public/og-image.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    
+    
+    <title>AnimeVersum - Discover & Explore Anime Series</title>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-08E4J4TED7"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-08E4J4TED7');
+    </script>
+    <!-- Preconnect to necessary domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Favicon links -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/src/public/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/src/public/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/src/public/apple-touch-icon.png">
+    <link rel="manifest" href="/src/public/site.webmanifest">
+    <link rel="mask-icon" href="/src/public/safari-pinned-tab.svg" color="#5bbad5">
+    <meta name="msapplication-TileColor" content="#da532c">
+    
+    <!-- Critical CSS inline -->
+    <style>
+      .goog-te-banner-frame,
+      iframe.goog-te-banner-frame,
+      .goog-te-banner-frame.skiptranslate,
+      .VIpgJd-ZVi9od-ORHb-OEVmcd,
+      .VIpgJd-ZVi9od-ORHb,
+      .VIpgJd-ZVi9od-l4eHX-hSRGPd {
+        display: none !important;
+      }
+      body, html {
+        top: 0 !important;
+        position: static !important;
+       
+      }
+      
+    </style>
+    
+    <!-- Load font with display=swap -->
+    <link href="https://fonts.googleapis.com/css2?family=Tilt+Neon&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Tilt+Neon&display=swap" rel="stylesheet">
+    </noscript>
+  </head>
+  <body>
+    <div id="root"></div>
+    
+    <!-- Google Translate element -->
+    <div id="google_translate_element" style="display:none"></div>
+    
+    <!-- Main app script -->
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Deferred Google Translate script -->
+    <script>
+      // Function to hide Google Translate banner
+      function hideGoogleTranslateBanner() {
+        const selectors = [
+          '.goog-te-banner-frame',
+          'iframe.goog-te-banner-frame',
+          '.goog-te-banner-frame.skiptranslate',
+          '.VIpgJd-ZVi9od-ORHb-OEVmcd',
+          '.VIpgJd-ZVi9od-ORHb',
+          '.VIpgJd-ZVi9od-l4eHX-hSRGPd'
+        ];
+        
+        selectors.forEach(selector => {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(el => {
+            if (el instanceof HTMLElement || el instanceof HTMLIFrameElement) {
+              el.style.display = 'none';
+            }
+          });
+        });
+        
+        document.body.style.top = '0px';
+        document.documentElement.style.top = '0px';
+      }
+
+      // Initialize Google Translate
+      function googleTranslateElementInit() {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+        new google.translate.TranslateElement({
+          pageLanguage: 'en',
+          includedLanguages: 'ar,en,de,es,fr,hi,it,ja,ko,pl,pt,ru,zh-CN',
+          layout: google.translate.TranslateElement.InlineLayout.HORIZONTAL,
+          autoDisplay: false,
+          gaTrack: false
+        }, 'google_translate_element');
+        
+        if (isMobile) {
+          document.addEventListener('touchend', hideGoogleTranslateBanner, { passive: true });
+        }
+        
+        hideGoogleTranslateBanner();
+        [100, 500, 1000].forEach(delay => {
+          setTimeout(hideGoogleTranslateBanner, delay);
+        });
+        
+        setInterval(hideGoogleTranslateBanner, 3000);
+      }
+      
+      // Load Google Translate script with defer
+      document.addEventListener('DOMContentLoaded', function() {
+        // Wait for critical content to load first
+        setTimeout(() => {
+          const script = document.createElement('script');
+          script.type = 'text/javascript';
+          script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+          script.defer = true;
+          document.head.appendChild(script);
+          
+          const observer = new MutationObserver(hideGoogleTranslateBanner);
+          observer.observe(document.body, { 
+            childList: true, 
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['style', 'class']
+          });
+        }, 1000);
+      });
+    </script>
+    
+    <!-- Structured data for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "AnimeVersum",
+      "url": "https://animeversum.netlify.app/",
+      "description": "Discover anime, explore genres, and find new series to watch",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://animeversum.netlify.app/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+  </body>
+</html>
