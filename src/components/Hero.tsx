@@ -10,15 +10,7 @@ const Hero = () => {
   
   // Preload assets
   useEffect(() => {
-    // Preload video
-    const preloadVideo = document.createElement('link');
-    preloadVideo.rel = 'preload';
-    preloadVideo.as = 'video';
-    preloadVideo.href = videoPath;
-    preloadVideo.type = 'video/mp4';
-    document.head.appendChild(preloadVideo);
-
-    // Preload placeholder image
+    // Only preload the placeholder image
     const preloadImage = document.createElement('link');
     preloadImage.rel = 'preload';
     preloadImage.as = 'image';
@@ -28,7 +20,6 @@ const Hero = () => {
     
     // Clean up
     return () => {
-      document.head.removeChild(preloadVideo);
       document.head.removeChild(preloadImage);
     };
   }, []);
@@ -83,6 +74,11 @@ const Hero = () => {
     }
   };
 
+  const handleVideoError = () => {
+    console.warn('Video loading failed, falling back to placeholder');
+    setIsVideoLoaded(false);
+  };
+
   return (
     <div className="relative w-full">
       <section className="relative w-full h-screen">
@@ -97,7 +93,6 @@ const Hero = () => {
             height="1080"
             loading="eager"
             decoding="sync"
-            fetchPriority="high"
           />
           
           {/* Optimized Video */}
@@ -113,6 +108,7 @@ const Hero = () => {
             playsInline
             preload="auto"
             onCanPlay={handleVideoLoaded}
+            onError={handleVideoError}
           />
           
           <div className="absolute inset-0 bg-black/40 border-b border-b-[#4ef1d6]" />
