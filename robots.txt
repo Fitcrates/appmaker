@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 Allow: /favicon.ico
-Sitemap: https://animecrates.netlify.app/sitemap.xml
+Sitemap: https://animeversum.netlify.app/sitemap.xml
